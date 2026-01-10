@@ -102,4 +102,5 @@ runs:
         name: binary-scan-results
         path: ${{ inputs.scan-path }}/binary-scan-results.json
         retention-days: 30
+        overwrite: true
 
