@@ -58,7 +58,7 @@ const MAGIC_SIGNATURES = {
 
 // Directories to skip for faster scanning
 const SKIP_DIRS = new Set([
-  '.bin', '.cache', '.git', '.github', '.vscode',
+  '.cache', '.git', '.github', '.vscode',
   '__tests__', '__mocks__', 'test', 'tests', 'spec', 'specs',
   'docs', 'doc', 'documentation', 'example', 'examples',
   'coverage', '.nyc_output', 'typings', '@types'
@@ -198,7 +198,9 @@ function scanDirectory(dir, nodeModulesRoot, results, visited = new Set()) {
         // Skip certain directories for speed
         if (SKIP_DIRS.has(entry.name)) continue;
         scanDirectory(fullPath, nodeModulesRoot, results, visited);
-      } else if (entry.isFile()) {
+      } else if (entry.isFile() && !entry.isSymbolicLink()) {
+        // Skip symlinks - they point to binaries found elsewhere (e.g., .bin/ symlinks)
+        // This avoids duplicates while still catching hidden malware in .bin/
         scannedFiles++;
         
         // Skip files that definitely won't be binaries or scripts
