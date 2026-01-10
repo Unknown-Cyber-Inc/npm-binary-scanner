@@ -356,11 +356,14 @@ function uploadFile(apiUrl, apiKey, filePath, filename, tag) {
 /**
  * Upload all found binaries
  */
-async function uploadBinaries(results, apiUrl, apiKey) {
+async function uploadBinaries(results, apiUrl, apiKey, repo) {
   console.log('\n' + '='.repeat(80));
-  console.log('UPLOADING BINARIES TO UNKNOWNCYBER');
+  console.log('UPLOADING EXECUTABLES TO UNKNOWNCYBER');
   console.log('='.repeat(80));
   console.log(`API URL: ${apiUrl}`);
+  if (repo) {
+    console.log(`Repository: ${repo}`);
+  }
   console.log(`Total files to upload: ${results.length}\n`);
   
   const uploadResults = {
@@ -371,8 +374,13 @@ async function uploadBinaries(results, apiUrl, apiKey) {
   for (let i = 0; i < results.length; i++) {
     const binary = results[i];
     
-    // Build the tag: SW_<package>@<version> (no spaces)
-    const tag = `SW_${binary.package}@${binary.version}`.replace(/\s+/g, '_');
+    // Build tags array: SW_<package>@<version> and optionally REPO_<repo>
+    const tags = [];
+    tags.push(`SW_${binary.package}@${binary.version}`.replace(/\s+/g, '_'));
+    if (repo) {
+      tags.push(`REPO_${repo}`.replace(/\s+/g, '_'));
+    }
+    const tagString = tags.join(',');
     
     // Filename is the path below node_modules (using forward slashes)
     const filename = binary.file.replace(/\\/g, '/');
@@ -380,13 +388,13 @@ async function uploadBinaries(results, apiUrl, apiKey) {
     process.stdout.write(`[${i + 1}/${results.length}] Uploading ${filename}... `);
     
     try {
-      const result = await uploadFile(apiUrl, apiKey, binary.absolutePath, filename, tag);
+      const result = await uploadFile(apiUrl, apiKey, binary.absolutePath, filename, tagString);
       
         if (result.success) {
           console.log('\x1b[32m✓ OK\x1b[0m');
           uploadResults.successful.push({
             file: filename,
-            tag: tag,
+            tags: tags,
             status: result.status
           });
         } else {
@@ -402,7 +410,7 @@ async function uploadBinaries(results, apiUrl, apiKey) {
           }
           uploadResults.failed.push({
             file: filename,
-            tag: tag,
+            tags: tags,
             status: result.status,
             error: result.error
           });
@@ -411,7 +419,7 @@ async function uploadBinaries(results, apiUrl, apiKey) {
       console.log(`\x1b[31m✗ Error: ${err.message}\x1b[0m`);
       uploadResults.failed.push({
         file: filename,
-        tag: tag,
+        tags: tags,
         error: err.message
       });
     }
@@ -555,7 +563,7 @@ async function scanNodeModules(targetDir, options = {}) {
       process.exit(1);
     }
     
-    const uploadResults = await uploadBinaries(results, options.apiUrl, options.apiKey);
+    const uploadResults = await uploadBinaries(results, options.apiUrl, options.apiKey, options.repo);
     jsonOutput.uploadResults = uploadResults;
     
     // Update JSON with upload results
@@ -574,7 +582,8 @@ function parseArgs(args) {
     deep: false,
     upload: false,
     apiUrl: process.env.UC_API_URL || '',
-    apiKey: process.env.UC_API_KEY || ''
+    apiKey: process.env.UC_API_KEY || '',
+    repo: process.env.UC_REPO || ''
   };
   
   for (let i = 0; i < args.length; i++) {
@@ -591,6 +600,8 @@ function parseArgs(args) {
       options.apiUrl = args[++i];
     } else if (arg === '--api-key') {
       options.apiKey = args[++i];
+    } else if (arg === '--repo') {
+      options.repo = args[++i];
     } else if (!arg.startsWith('-')) {
       options.targetDir = path.resolve(arg);
     }
@@ -615,6 +626,7 @@ Options:
   --upload            Upload found executables to UnknownCyber API
   --api-url <url>     API base URL (or set UC_API_URL env var)
   --api-key <key>     API key for authentication (or set UC_API_KEY env var)
+  --repo <name>       Repository name to tag uploads with (or set UC_REPO env var)
   --help, -h          Show this help message
 
 Examples:
@@ -630,9 +642,13 @@ Examples:
   # Scan and upload to UnknownCyber
   node scanner.js --upload --api-url https://api.unknowncyber.com --api-key YOUR_KEY
   
+  # Scan and upload with repository tag
+  node scanner.js --upload --repo my-org/my-repo --api-key YOUR_KEY
+  
   # Using environment variables
   set UC_API_URL=https://api.unknowncyber.com
   set UC_API_KEY=your-api-key
+  set UC_REPO=my-org/my-repo
   node scanner.js --upload
 
 Detected Binary Types:
@@ -651,7 +667,8 @@ Detected Script Types (potential attack vectors):
 Upload Details:
   When --upload is specified, each executable is uploaded with:
   - Filename: Path relative to node_modules (e.g., "@esbuild/win32-x64/esbuild.exe")
-  - Tag: "SW_<package>@<version>" format (e.g., "SW_@esbuild/win32-x64@0.20.2")
+  - Tags: "SW_<package>@<version>" (e.g., "SW_@esbuild/win32-x64@0.20.2")
+          "REPO_<repo>" if --repo is specified (e.g., "REPO_my-org/my-repo")
 
 Output:
   - Console output grouped by package (⚙️ for binaries, 📜 for scripts)
