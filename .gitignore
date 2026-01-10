@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Output files
+binary-scan-results.json
+upload-*.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test artifacts
+test-project/
+

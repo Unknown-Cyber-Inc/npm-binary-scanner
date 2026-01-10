@@ -1,0 +1,97 @@
+name: 'NPM Binary Scanner'
+description: 'Scans npm packages for binary executables and optionally uploads them to UnknownCyber for analysis'
+author: 'UnknownCyber'
+
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  scan-path:
+    description: 'Path to the directory containing node_modules to scan'
+    required: false
+    default: '.'
+  deep-scan:
+    description: 'Enable deep scan using magic bytes detection (slower but more thorough)'
+    required: false
+    default: 'false'
+  upload:
+    description: 'Upload found binaries to UnknownCyber API'
+    required: false
+    default: 'false'
+  api-url:
+    description: 'UnknownCyber API URL'
+    required: false
+    default: 'https://api.unknowncyber.com'
+  api-key:
+    description: 'UnknownCyber API key for authentication'
+    required: false
+    default: ''
+
+outputs:
+  total-packages:
+    description: 'Number of packages containing binaries'
+  total-binaries:
+    description: 'Total number of binary files found'
+  results-file:
+    description: 'Path to the JSON results file'
+  upload-successful:
+    description: 'Number of successfully uploaded files'
+  upload-failed:
+    description: 'Number of failed uploads'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Run Binary Scanner
+      id: scan
+      shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.scan-path }}
+        DEEP_SCAN: ${{ inputs.deep-scan }}
+        UPLOAD: ${{ inputs.upload }}
+        UC_API_URL: ${{ inputs.api-url }}
+        UC_API_KEY: ${{ inputs.api-key }}
+      run: |
+        # Build command arguments
+        ARGS=""
+        if [ "$DEEP_SCAN" = "true" ]; then
+          ARGS="$ARGS --deep"
+        fi
+        if [ "$UPLOAD" = "true" ]; then
+          ARGS="$ARGS --upload"
+        fi
+        
+        # Run the scanner
+        node "${{ github.action_path }}/scanner.js" $ARGS "$SCAN_PATH"
+        
+        # Parse results from JSON
+        if [ -f "$SCAN_PATH/binary-scan-results.json" ]; then
+          TOTAL_PACKAGES=$(node -e "console.log(require('./$SCAN_PATH/binary-scan-results.json').totalPackages)")
+          TOTAL_BINARIES=$(node -e "console.log(require('./$SCAN_PATH/binary-scan-results.json').totalBinaries)")
+          
+          echo "total-packages=$TOTAL_PACKAGES" >> $GITHUB_OUTPUT
+          echo "total-binaries=$TOTAL_BINARIES" >> $GITHUB_OUTPUT
+          echo "results-file=$SCAN_PATH/binary-scan-results.json" >> $GITHUB_OUTPUT
+          
+          # Check for upload results
+          UPLOAD_SUCCESS=$(node -e "const r = require('./$SCAN_PATH/binary-scan-results.json'); console.log(r.uploadResults?.successful?.length || 0)")
+          UPLOAD_FAILED=$(node -e "const r = require('./$SCAN_PATH/binary-scan-results.json'); console.log(r.uploadResults?.failed?.length || 0)")
+          
+          echo "upload-successful=$UPLOAD_SUCCESS" >> $GITHUB_OUTPUT
+          echo "upload-failed=$UPLOAD_FAILED" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload Results Artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: binary-scan-results
+        path: ${{ inputs.scan-path }}/binary-scan-results.json
+        retention-days: 30
+

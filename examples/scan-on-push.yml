@@ -1,0 +1,63 @@
+# Example workflow: Scan npm binaries on every push
+# Copy this file to your repo's .github/workflows/ directory
+
+name: Scan NPM Binaries
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'yarn.lock'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'yarn.lock'
+      - 'pnpm-lock.yaml'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  scan-binaries:
+    name: Scan for Binary Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Scan npm binaries
+        id: scan
+        uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+        with:
+          upload: 'true'
+          api-key: ${{ secrets.UC_API_KEY }}
+
+      - name: Report results
+        run: |
+          echo "## Binary Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Packages with binaries:** ${{ steps.scan.outputs.total-packages }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total binary files:** ${{ steps.scan.outputs.total-binaries }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Uploaded successfully:** ${{ steps.scan.outputs.upload-successful }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Upload failures:** ${{ steps.scan.outputs.upload-failed }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail on upload errors
+        if: ${{ steps.scan.outputs.upload-failed != '0' }}
+        run: |
+          echo "::error::Some binary uploads failed. Check the scan results."
+          exit 1
+

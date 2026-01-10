@@ -1,0 +1,22 @@
+{
+  "name": "npm-binary-scanner",
+  "version": "1.0.0",
+  "description": "Scans npm packages for binary executables (DLL, EXE, ELF, SO, etc.)",
+  "main": "scanner.js",
+  "bin": {
+    "npm-binary-scanner": "./scanner.js"
+  },
+  "scripts": {
+    "scan": "node scanner.js"
+  },
+  "keywords": [
+    "npm",
+    "binary",
+    "scanner",
+    "security",
+    "audit"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

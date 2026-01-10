@@ -1,0 +1,67 @@
+# Test workflow for the npm-binary-scanner action itself
+name: Test Action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-scan-only:
+    name: Test Scan Only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create test project
+        run: |
+          mkdir -p test-project
+          cd test-project
+          npm init -y
+          npm install esbuild --save-dev
+
+      - name: Run Binary Scanner (scan only)
+        uses: ./
+        id: scan
+        with:
+          scan-path: 'test-project'
+
+      - name: Check results
+        run: |
+          echo "Total packages with binaries: ${{ steps.scan.outputs.total-packages }}"
+          echo "Total binary files: ${{ steps.scan.outputs.total-binaries }}"
+          cat test-project/binary-scan-results.json
+
+  test-with-upload:
+    name: Test With Upload
+    runs-on: ubuntu-latest
+    # Only run upload test if API key is available
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create test project
+        run: |
+          mkdir -p test-project
+          cd test-project
+          npm init -y
+          npm install esbuild --save-dev
+
+      - name: Run Binary Scanner (with upload)
+        uses: ./
+        id: scan
+        with:
+          scan-path: 'test-project'
+          upload: 'true'
+          api-key: ${{ secrets.UC_API_KEY }}
+
+      - name: Check results
+        run: |
+          echo "Total packages with binaries: ${{ steps.scan.outputs.total-packages }}"
+          echo "Total binary files: ${{ steps.scan.outputs.total-binaries }}"
+          echo "Uploaded successfully: ${{ steps.scan.outputs.upload-successful }}"
+          echo "Upload failures: ${{ steps.scan.outputs.upload-failed }}"
+
