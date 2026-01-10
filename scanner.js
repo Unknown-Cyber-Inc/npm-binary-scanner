@@ -228,14 +228,32 @@ function scanDirectory(dir, nodeModulesRoot, results, visited = new Set()) {
           const packageInfo = findPackageInfo(fullPath, nodeModulesRoot);
           const relativePath = path.relative(nodeModulesRoot, fullPath);
           
+          // For files without package.json (like .bin/), use the relative path as package identifier
+          let packageName = 'unknown';
+          let packageVersion = 'unknown';
+          let packagePath = 'unknown';
+          
+          if (packageInfo) {
+            packageName = packageInfo.name;
+            packageVersion = packageInfo.version;
+            packagePath = packageInfo.relativePath;
+          } else {
+            // Use the directory structure as fallback (e.g., ".bin" for .bin/esbuild)
+            const pathParts = relativePath.split(path.sep);
+            if (pathParts.length > 0) {
+              packageName = pathParts[0]; // e.g., ".bin"
+              packagePath = pathParts[0];
+            }
+          }
+          
           results.push({
             file: relativePath,
             absolutePath: fullPath,
             type: detectedType,
             category: category,
-            package: packageInfo ? packageInfo.name : 'unknown',
-            version: packageInfo ? packageInfo.version : 'unknown',
-            packagePath: packageInfo ? packageInfo.relativePath : 'unknown'
+            package: packageName,
+            version: packageVersion,
+            packagePath: packagePath
           });
         }
       }
