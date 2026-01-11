@@ -4,6 +4,24 @@
 
 A GitHub Action and CLI tool that scans npm packages (`node_modules`) for binary executables like DLL, EXE, ELF, SO, and other binary files. It reports which packages contain binaries along with their version numbers, and can optionally upload them to UnknownCyber for security analysis.
 
+## Why Scan for Binaries?
+
+NPM packages can include pre-compiled native binaries and executable scripts. While often legitimate (e.g., `esbuild`, `sharp`), these pose unique security risks:
+
+| Risk | Description |
+|------|-------------|
+| **Supply Chain Attacks** | Malicious binaries injected into popular packages can execute arbitrary code during `npm install` |
+| **Invisible Threats** | Native code bypasses JavaScript-based security scanners |
+| **License Compliance** | Native binaries may carry different licensing terms than the JavaScript wrapper |
+| **Vulnerability Gaps** | Memory-unsafe languages (C/C++) can have vulnerabilities not caught by JS tooling |
+| **Post-Install Scripts** | Scripts in `preinstall`/`postinstall` hooks can execute malware |
+
+This tool helps you:
+- **Audit** which packages contain native code
+- **Upload** binaries to UnknownCyber for malware analysis
+- **Monitor** known threats in your dependency tree
+- **Alert** on suspicious or malicious files
+
 ## Features
 
 - 🔍 **Comprehensive Detection**: Identifies binaries by file extension and magic bytes
@@ -299,10 +317,24 @@ Detection ratio from multiple AV engines (typically ~76 scanners):
 | 0 detections | NONE | Clean |
 
 ### 2. Genomic Similarity
-Code similarity to known malware families.
+Code similarity to known malware families using UnknownCyber's genomic analysis:
+
+| Condition | Level | Interpretation |
+|-----------|-------|----------------|
+| Exact clone of known malware (100% match) | HIGH | Binary is identical to known threat |
+| Similar to detected threats (<100% match) | MEDIUM | Shares code with malicious families |
+| Has matches, none flagged | LOW | Similar files exist but are benign |
+| No similar files found | NONE | Unique or not in database |
 
 ### 3. Code Signing
-Digital signature validity (valid, invalid, unsigned, etc.).
+Digital signature validity for Windows PE files:
+
+| Signature Status | Level | Interpretation |
+|------------------|-------|----------------|
+| Signed but invalid | HIGH | Signature tampered, expired, or revoked - strong indicator of compromise |
+| Unsigned | CAUTION | No authenticity guarantee - common for open-source binaries |
+| Valid signature | NONE | Verified publisher identity |
+| Unknown | UNKNOWN | Signature data unavailable |
 
 ## GitHub Actions Annotations
 
@@ -421,16 +453,6 @@ Many popular npm packages include native binaries:
 - **swc** - Rust-based JavaScript compiler
 - **fsevents** - macOS file system events
 - **sentry-cli** - Sentry command-line tool
-
-## Security Considerations
-
-This tool helps with:
-
-1. **Supply Chain Auditing** - Identify packages with native code
-2. **License Compliance** - Native binaries may have different licensing
-3. **Security Review** - Native code can have vulnerabilities not caught by JS scanners
-4. **Malware Detection** - Upload to UnknownCyber for analysis
-5. **Threat Monitoring** - Get alerts when known-bad binaries appear in dependencies
 
 ## Requirements
 
