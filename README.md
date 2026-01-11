@@ -352,32 +352,7 @@ Local scanning using YARA rules to detect malware patterns:
 | `medium` | MEDIUM | Suspicious patterns worth investigating |
 | `low` | LOW | Minor concerns, informational |
 
-YARA results are reported via:
-- `yara-matches` output: Total files with any YARA match
-- `yara-high-severity` output: Files matching critical/high severity rules
-
-#### Block Pipeline on YARA Matches
-
-```yaml
-- name: Scan with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
-  id: scan
-  with:
-    yara-scan: 'true'
-    yara-include: '*.js'
-
-- name: Fail on high-severity YARA matches
-  if: steps.scan.outputs.yara-high-severity > 0
-  run: |
-    echo "::error::YARA detected ${{ steps.scan.outputs.yara-high-severity }} high-severity matches!"
-    exit 1
-
-- name: Fail on any YARA match
-  if: steps.scan.outputs.yara-matches > 0
-  run: |
-    echo "::error::YARA detected matches in ${{ steps.scan.outputs.yara-matches }} files!"
-    exit 1
-```
+See [YARA Scanning](#yara-scanning) for usage examples and pipeline blocking.
 
 ## GitHub Actions Annotations
 
@@ -487,7 +462,7 @@ python yara_scanner.py --dir ./node_modules --include "*.js" --rules ./my-rules 
 python yara_scanner.py --input results.json --output yara.json --github-annotations
 ```
 
-### YARA Results
+### YARA Results & Outputs
 
 YARA matches are reported with severity levels from rule metadata:
 
@@ -498,7 +473,11 @@ YARA matches are reported with severity levels from rule metadata:
 | **medium** | Suspicious patterns worth investigating | 🟡 `::warning::` |
 | **low** | Minor concerns, informational | 🔵 `::notice::` |
 
-### Fail on YARA Matches
+**Outputs:**
+- `yara-matches`: Total files with any YARA match
+- `yara-high-severity`: Files matching critical/high severity rules
+
+### Block Pipeline on YARA Matches
 
 ```yaml
 - name: Scan with YARA
@@ -506,11 +485,20 @@ YARA matches are reported with severity levels from rule metadata:
   id: scan
   with:
     yara-scan: 'true'
+    yara-include: '*.js'
 
-- name: Fail if malware detected
+# Option 1: Fail only on high-severity matches (malware signatures)
+- name: Fail on malware detection
   if: steps.scan.outputs.yara-high-severity > 0
   run: |
     echo "::error::YARA detected ${{ steps.scan.outputs.yara-high-severity }} high-severity matches!"
+    exit 1
+
+# Option 2: Fail on ANY YARA match (stricter)
+- name: Fail on any YARA match
+  if: steps.scan.outputs.yara-matches > 0
+  run: |
+    echo "::error::YARA detected matches in ${{ steps.scan.outputs.yara-matches }} files!"
     exit 1
 ```
 
