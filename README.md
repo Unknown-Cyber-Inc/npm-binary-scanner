@@ -400,9 +400,9 @@ The scanner includes these YARA rule categories:
 
 | Rule File | Description |
 |-----------|-------------|
-| `malware.yar` | Generic malware signatures, backdoors, ransomware, stealers |
-| `suspicious.yar` | Suspicious patterns: PowerShell cradles, process injection, anti-debug |
-| `crypto.yar` | Cryptocurrency miners, wallet addresses, mining pool connections |
+| `malware.yar` | Backdoors, info stealers, droppers, webshells, npm-specific malware |
+| `suspicious.yar` | PowerShell cradles, Base64 execution, process injection, anti-debug |
+| `crypto.yar` | Mining pools, XMRig, Coinhive, CPU/GPU miner patterns |
 | `shai_hulud.yar` | Obfuscated JavaScript patterns (npm supply chain attacks) |
 
 ### YARA CLI Usage
