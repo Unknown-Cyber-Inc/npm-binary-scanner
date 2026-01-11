@@ -87,9 +87,11 @@ node scanner.js --upload --api-key YOUR_API_KEY
 |-------|-------------|----------|---------|
 | `scan-path` | Path to directory containing node_modules | No | `.` |
 | `deep-scan` | Enable magic bytes detection (slower) | No | `false` |
-| `upload` | Upload binaries to UnknownCyber | No | `false` |
+| `upload` | Upload files to UnknownCyber | No | `false` |
 | `skip-existing` | Skip files already in UnknownCyber | No | `true` |
 | `get-reputations` | Fetch threat data for existing files | No | `true` |
+| `include-package-json` | Include package.json files (for SBOM) | No | `false` |
+| `include-all-files` | Include ALL files (not just executables) | No | `false` |
 | `api-url` | UnknownCyber API URL | No | `https://api.unknowncyber.com` |
 | `api-key` | UnknownCyber API key | No | `''` |
 | `repo` | Repository name to tag uploads with | No | `${{ github.repository }}` |
@@ -180,6 +182,34 @@ By default, the scanner will:
     upload: 'true'
     api-key: ${{ secrets.UC_API_KEY }}
 ```
+
+#### Include package.json for SBOM
+
+Upload package.json files to enable Software Bill of Materials (SBOM) creation:
+
+```yaml
+- name: Scan with SBOM support
+  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  with:
+    upload: 'true'
+    include-package-json: 'true'
+    api-key: ${{ secrets.UC_API_KEY }}
+```
+
+#### Upload All Files
+
+Upload everything in node_modules (executables, metadata, source files):
+
+```yaml
+- name: Full package upload
+  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  with:
+    upload: 'true'
+    include-all-files: 'true'
+    api-key: ${{ secrets.UC_API_KEY }}
+```
+
+Note: Reputation data is only fetched for executable files (binaries and scripts), not for metadata or other files.
 
 #### Add Results to PR Summary
 
