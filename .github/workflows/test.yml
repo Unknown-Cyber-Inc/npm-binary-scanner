@@ -242,8 +242,8 @@ jobs:
         run: |
           node scanner.js --upload --no-reputations test-project
 
-  test-yara-scan:
-    name: Test YARA Scanning
+  test-yara-binaries:
+    name: Test YARA on Binaries
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -256,7 +256,7 @@ jobs:
           npm init -y
           npm install esbuild --save-dev
 
-      - name: Run Scanner with YARA
+      - name: Run Scanner with YARA (binaries)
         uses: ./
         id: scan
         with:
@@ -277,6 +277,40 @@ jobs:
             echo ""
             echo "=== YARA Results JSON ==="
             cat test-project/yara-results.json
+          fi
+
+  test-yara-js:
+    name: Test YARA on JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create test project
+        run: |
+          mkdir -p test-project
+          cd test-project
+          npm init -y
+          npm install lodash --save  # Has JS files to scan
+
+      - name: Run Scanner with YARA (JS files)
+        uses: ./
+        id: scan
+        with:
+          scan-path: 'test-project'
+          yara-scan: 'true'
+          yara-include: '*.js'
+
+      - name: Check YARA JS results
+        run: |
+          echo "=== YARA JS Scan Results ==="
+          echo "Files with YARA matches: ${{ steps.scan.outputs.yara-matches }}"
+          echo "High severity matches: ${{ steps.scan.outputs.yara-high-severity }}"
+          
+          if [ -f "test-project/yara-results.json" ]; then
+            echo ""
+            echo "=== Files scanned ==="
+            cat test-project/yara-results.json | head -20
           fi
 
   test-yara-cli:

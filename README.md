@@ -30,7 +30,7 @@ This tool helps you:
 - ☁️ **UnknownCyber Integration**: Upload binaries for malware analysis
 - 🔒 **Smart Deduplication**: Skips files already in UnknownCyber to save time and bandwidth
 - ⚠️ **Threat Detection**: Fetches and displays reputation data for existing files
-- 🧬 **YARA Scanning**: Local pattern matching for malware, crypto miners, and suspicious code
+- 🧬 **YARA Scanning**: Local pattern matching for malware and suspicious patterns
 - 📊 **Detailed Reports**: JSON output with full scan results and threat assessments
 - 🚀 **GitHub Action**: Easy CI/CD integration
 
@@ -93,8 +93,9 @@ node scanner.js --upload --api-key YOUR_API_KEY
 | `api-url` | UnknownCyber API URL | No | `https://api.unknowncyber.com` |
 | `api-key` | UnknownCyber API key | No | `''` |
 | `repo` | Repository name to tag uploads with | No | `${{ github.repository }}` |
-| `yara-scan` | Enable YARA scanning of binaries | No | `false` |
+| `yara-scan` | Enable YARA scanning | No | `false` |
 | `yara-rules` | Path to additional YARA rules | No | `''` |
+| `yara-include` | File patterns for YARA (e.g., `*.js,*.html`) | No | `''` |
 
 ### Outputs
 
@@ -373,15 +374,37 @@ When files already exist in UnknownCyber, the scanner automatically syncs tags:
 
 ## YARA Scanning
 
-The scanner includes optional YARA scanning to detect malware patterns, suspicious behaviors, and crypto miners in binaries.
+The scanner includes optional YARA scanning to detect malware patterns and suspicious code in binaries and source files.
 
-### Enable YARA Scanning
+### Scan Binaries Only
 
 ```yaml
-- name: Scan with YARA
+- name: Scan binaries with YARA
   uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
   with:
     yara-scan: 'true'
+```
+
+### Scan JavaScript Files
+
+Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
+
+```yaml
+- name: Scan JS files with YARA
+  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  with:
+    yara-scan: 'true'
+    yara-include: '*.js'
+```
+
+### Scan Multiple File Types
+
+```yaml
+- name: Scan JS, HTML, and MJS files
+  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  with:
+    yara-scan: 'true'
+    yara-include: '*.js,*.html,*.mjs'
 ```
 
 ### Add Custom Rules
@@ -408,14 +431,20 @@ The scanner includes these YARA rule categories:
 ### YARA CLI Usage
 
 ```bash
-# Scan using binary-scan-results.json
+# Scan binaries from results.json
 python yara_scanner.py --input results.json
 
-# Scan a directory directly  
+# Scan JavaScript files
+python yara_scanner.py --dir ./node_modules --include "*.js"
+
+# Scan multiple file types
+python yara_scanner.py --dir ./node_modules --include "*.js" --include "*.html" --include "*.mjs"
+
+# Scan all files in a directory
 python yara_scanner.py --dir ./node_modules
 
 # Use only custom rules (skip bundled)
-python yara_scanner.py --input results.json --rules ./my-rules --no-bundled-rules
+python yara_scanner.py --dir ./node_modules --include "*.js" --rules ./my-rules --no-bundled-rules
 
 # Output to file with GitHub annotations
 python yara_scanner.py --input results.json --output yara.json --github-annotations

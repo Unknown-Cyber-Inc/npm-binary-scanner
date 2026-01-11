@@ -184,14 +184,15 @@ def scan_files_from_json(rules: yara.Rules, json_path: str, timeout: int = 60) -
     return yara_results
 
 
-def scan_directory(rules: yara.Rules, directory: str, timeout: int = 60) -> dict:
+def scan_directory(rules: yara.Rules, directory: str, timeout: int = 60, include_patterns: list[str] = None) -> dict:
     """
-    Scan all files in a directory recursively.
+    Scan files in a directory recursively, optionally filtering by patterns.
     
     Args:
         rules: Compiled YARA rules
         directory: Directory to scan
         timeout: Scan timeout per file
+        include_patterns: List of glob patterns to include (e.g., ['*.js', '*.html'])
         
     Returns:
         Dictionary with scan results
@@ -204,7 +205,17 @@ def scan_directory(rules: yara.Rules, directory: str, timeout: int = 60) -> dict
     }
     
     dir_path = Path(directory)
-    files = list(dir_path.rglob('*'))
+    
+    # Collect files matching patterns
+    if include_patterns:
+        files = []
+        for pattern in include_patterns:
+            files.extend(dir_path.rglob(pattern))
+        # Remove duplicates while preserving order
+        files = list(dict.fromkeys(files))
+    else:
+        files = list(dir_path.rglob('*'))
+    
     files = [f for f in files if f.is_file()]
     
     print(f"\nScanning {len(files)} files with YARA...", file=sys.stderr)
@@ -280,17 +291,23 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  # Scan using binary-scan-results.json
-  python yara_scanner.py --input results.json --rules ./rules
+  # Scan binaries from binary-scan-results.json
+  python yara_scanner.py --input results.json
 
-  # Scan a directory directly
-  python yara_scanner.py --dir ./node_modules --rules ./rules
+  # Scan JavaScript files in node_modules
+  python yara_scanner.py --dir ./node_modules --include "*.js"
 
-  # Use multiple rule sources
-  python yara_scanner.py --input results.json --rules ./rules --rules ./custom-rules
+  # Scan multiple file types (JS, HTML, MJS)
+  python yara_scanner.py --dir ./node_modules --include "*.js" --include "*.html" --include "*.mjs"
 
-  # Output to file
-  python yara_scanner.py --input results.json --rules ./rules --output yara-results.json
+  # Scan all files in a directory
+  python yara_scanner.py --dir ./node_modules
+
+  # Use additional custom rules
+  python yara_scanner.py --dir ./node_modules --include "*.js" --rules ./custom-rules
+
+  # Output to file with GitHub annotations
+  python yara_scanner.py --input results.json --output yara.json --github-annotations
 '''
     )
     
@@ -301,6 +318,12 @@ Examples:
     parser.add_argument(
         '--dir', '-d',
         help='Directory to scan directly (alternative to --input)'
+    )
+    parser.add_argument(
+        '--include',
+        action='append',
+        default=[],
+        help='File pattern to include when using --dir (e.g., "*.js"). Can be specified multiple times.'
     )
     parser.add_argument(
         '--rules', '-r',
@@ -364,7 +387,8 @@ Examples:
     if args.input:
         results = scan_files_from_json(rules, args.input, args.timeout)
     else:
-        results = scan_directory(rules, args.dir, args.timeout)
+        include_patterns = args.include if args.include else None
+        results = scan_directory(rules, args.dir, args.timeout, include_patterns)
     
     # Summary
     print(f"\n=== YARA Scan Summary ===", file=sys.stderr)

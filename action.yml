@@ -40,11 +40,15 @@ inputs:
     required: false
     default: '${{ github.repository }}'
   yara-scan:
-    description: 'Enable YARA scanning of binaries'
+    description: 'Enable YARA scanning'
     required: false
     default: 'false'
   yara-rules:
     description: 'Path to additional YARA rules file or directory'
+    required: false
+    default: ''
+  yara-include:
+    description: 'File patterns to scan with YARA (e.g., "*.js,*.html"). If empty, scans binaries from results.'
     required: false
     default: ''
 
@@ -149,11 +153,23 @@ runs:
       env:
         SCAN_PATH: ${{ inputs.scan-path }}
         YARA_RULES: ${{ inputs.yara-rules }}
+        YARA_INCLUDE: ${{ inputs.yara-include }}
       run: |
         # Build YARA command arguments
-        YARA_ARGS="--input $SCAN_PATH/binary-scan-results.json"
-        YARA_ARGS="$YARA_ARGS --output $SCAN_PATH/yara-results.json"
+        YARA_ARGS="--output $SCAN_PATH/yara-results.json"
         YARA_ARGS="$YARA_ARGS --github-annotations"
+        
+        # If include patterns provided, scan files directly; otherwise scan binaries from results
+        if [ -n "$YARA_INCLUDE" ]; then
+          YARA_ARGS="$YARA_ARGS --dir $SCAN_PATH/node_modules"
+          # Split comma-separated patterns and add each as --include
+          IFS=',' read -ra PATTERNS <<< "$YARA_INCLUDE"
+          for pattern in "${PATTERNS[@]}"; do
+            YARA_ARGS="$YARA_ARGS --include \"$pattern\""
+          done
+        else
+          YARA_ARGS="$YARA_ARGS --input $SCAN_PATH/binary-scan-results.json"
+        fi
         
         # Add user-provided rules if specified
         if [ -n "$YARA_RULES" ]; then
@@ -161,7 +177,7 @@ runs:
         fi
         
         # Run YARA scanner
-        python "${{ github.action_path }}/yara_scanner.py" $YARA_ARGS
+        eval python "${{ github.action_path }}/yara_scanner.py" $YARA_ARGS
         
         # Parse YARA results
         if [ -f "$SCAN_PATH/yara-results.json" ]; then
