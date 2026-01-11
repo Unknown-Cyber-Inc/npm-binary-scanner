@@ -286,9 +286,23 @@ When reputation data is fetched, files are categorized by threat level:
 | **UNKNOWN** | Not enough data for assessment | ❓ Pending analysis |
 
 Threat assessment is based on three factors:
-1. **Antivirus Results**: Detection ratio from multiple AV engines
-2. **Genomic Similarity**: Code similarity to known malware
-3. **Code Signing**: Digital signature validity
+
+### 1. Antivirus Results
+Detection ratio from multiple AV engines (typically ~76 scanners):
+
+| Detections | Level | Interpretation |
+|------------|-------|----------------|
+| ≥10% (8+/76) | HIGH | Serious concern - multiple engines agree |
+| ≥5% (4-7/76) | MEDIUM | Needs attention |
+| 2-3 detections | CAUTION | Worth investigating |
+| 1 detection | LOW | Likely false positive |
+| 0 detections | NONE | Clean |
+
+### 2. Genomic Similarity
+Code similarity to known malware families.
+
+### 3. Code Signing
+Digital signature validity (valid, invalid, unsigned, etc.).
 
 ## GitHub Actions Annotations
 

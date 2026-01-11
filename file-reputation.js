@@ -385,13 +385,18 @@ function assessAVReputation(fileInfo, avScanData) {
   } else {
     const ratio = detectionCount / scannerCount;
 
-    if (ratio >= 0.5) {
+    // Thresholds:
+    // - HIGH: ≥10% (8+ of 76) - serious concern
+    // - MEDIUM: ≥5% (4-7 of 76) - needs attention
+    // - CAUTION: 2-3 detections - worth investigating
+    // - LOW: 1 detection - likely false positive
+    if (ratio >= 0.10) {
       verdict = 'malicious';
       threatLevel = 'high';
-    } else if (ratio >= 0.2) {
+    } else if (ratio >= 0.05) {
       verdict = 'malicious';
       threatLevel = 'medium';
-    } else if (ratio >= 0.05) {
+    } else if (detectionCount >= 2) {
       verdict = 'suspicious';
       threatLevel = 'caution';
     } else {
