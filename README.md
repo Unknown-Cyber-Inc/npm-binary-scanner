@@ -1,6 +1,6 @@
 # NPM Package Scanner
 
-[![Test Action](https://github.com/Unknown-Cyber-Inc/npm-binary-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/npm-binary-scanner/actions/workflows/test.yml)
+[![Test Action](https://github.com/Unknown-Cyber-Inc/npm-package-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/npm-package-scanner/actions/workflows/test.yml)
 
 A GitHub Action and CLI tool that scans npm packages (`node_modules`) for security threats. It detects binary executables, scripts, and suspicious patterns, then uploads them to UnknownCyber for multi-layer threat analysis including AV scanning, genomic similarity, and SBOM tracking.
 
@@ -125,7 +125,7 @@ jobs:
       - run: npm ci
       
       - name: Scan binaries
-        uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+        uses: Unknown-Cyber-Inc/npm-package-scanner@v1
         with:
           upload: 'true'
           api-key: ${{ secrets.UC_API_KEY }}
@@ -135,9 +135,9 @@ jobs:
 
 ```bash
 # Clone and run directly
-git clone https://github.com/Unknown-Cyber-Inc/npm-binary-scanner.git
+git clone https://github.com/Unknown-Cyber-Inc/npm-package-scanner.git
 cd your-project
-node path/to/npm-binary-scanner/scanner.js
+node path/to/npm-package-scanner/scanner.js
 
 # With upload
 node scanner.js --upload --api-key YOUR_API_KEY
@@ -183,7 +183,7 @@ node scanner.js --upload --api-key YOUR_API_KEY
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
 
 - name: Report
@@ -194,7 +194,7 @@ node scanner.js --upload --api-key YOUR_API_KEY
 
 ```yaml
 - name: Scan and upload binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     upload: 'true'
@@ -217,7 +217,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Force upload all binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     upload: 'true'
     skip-existing: 'false'  # Upload even if file exists
@@ -228,7 +228,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Quick scan and upload
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     upload: 'true'
     get-reputations: 'false'  # Don't fetch threat data for existing files
@@ -239,7 +239,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Deep scan frontend
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     scan-path: './packages/frontend'
     deep-scan: 'true'
@@ -253,7 +253,7 @@ Upload package.json files to enable Software Bill of Materials (SBOM) creation:
 
 ```yaml
 - name: Scan with SBOM support
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     upload: 'true'
     include-package-json: 'true'
@@ -266,7 +266,7 @@ Upload everything in node_modules (executables, metadata, source files):
 
 ```yaml
 - name: Full package upload
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     upload: 'true'
     include-all-files: 'true'
@@ -279,7 +279,7 @@ Note: Reputation data is only fetched for executable files (binaries and scripts
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     upload: 'true'
@@ -299,7 +299,7 @@ Note: Reputation data is only fetched for executable files (binaries and scripts
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     upload: 'true'
@@ -449,7 +449,7 @@ The scanner includes optional YARA scanning to detect malware patterns and suspi
 
 ```yaml
 - name: Scan binaries with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
 ```
@@ -460,7 +460,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan JS files with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
     yara-include: '*.js'
@@ -470,7 +470,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan JS, HTML, and MJS files
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
     yara-include: '*.js,*.html,*.mjs'
@@ -480,7 +480,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan with custom YARA rules
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
     yara-rules: './my-rules'  # Path to your .yar files
@@ -532,7 +532,7 @@ Severity levels (`critical`, `high`, `medium`, `low`) are defined in rule metada
 
 ```yaml
 - name: Scan with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     yara-scan: 'true'
