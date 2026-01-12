@@ -162,6 +162,8 @@ node scanner.js --upload --api-key YOUR_API_KEY
 | `yara-scan` | Enable YARA scanning | No | `false` |
 | `yara-rules` | Path to additional YARA rules | No | `''` |
 | `yara-include` | File patterns for YARA (e.g., `*.js,*.html`) | No | `''` |
+| `generate-summary` | Generate summary report with links to UC reports | No | `false` |
+| `fail-on-threats` | Fail if HIGH/MEDIUM threats or high-severity YARA matches found | No | `false` |
 
 ### Outputs
 
@@ -275,15 +277,33 @@ Upload everything in node_modules (executables, metadata, source files):
 
 Note: Reputation data is only fetched for executable files (binaries and scripts), not for metadata or other files.
 
-#### Add Results to PR Summary
+#### Complete Scan with Summary and Fail on Threats
 
-The scanner results include SHA256 hashes that can be used to link directly to UnknownCyber's detailed reports. Security findings in the summary include clickable links in the format:
+The simplest way to get full security scanning with a detailed report:
 
+```yaml
+- name: Scan npm packages
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  with:
+    upload: 'true'
+    deep-scan: 'true'
+    yara-scan: 'true'
+    yara-include: '*.js,*.exe'
+    generate-summary: 'true'
+    fail-on-threats: 'true'
+    api-key: ${{ secrets.UC_API_KEY }}
 ```
-[filename](https://unknowncyber.com/files/<sha256>/report/)
-```
 
-Example summary configuration:
+This single step:
+- Scans all binaries and scripts
+- Runs YARA rules on JS and EXE files
+- Uploads files to UnknownCyber for analysis
+- Generates a detailed summary with links to [UC reports](https://unknowncyber.com/files/<sha256>/report/)
+- Fails the pipeline if threats are detected
+
+#### Custom Summary (Manual)
+
+If you need a custom summary format, you can build it from outputs:
 
 ```yaml
 - name: Scan binaries
@@ -301,23 +321,10 @@ Example summary configuration:
     echo "- Uploaded: ${{ steps.scan.outputs.upload-successful }}" >> $GITHUB_STEP_SUMMARY
     echo "- Skipped (existing): ${{ steps.scan.outputs.upload-skipped }}" >> $GITHUB_STEP_SUMMARY
     echo "- ⚠️ Threats found: ${{ steps.scan.outputs.threats-found }}" >> $GITHUB_STEP_SUMMARY
-```
-
-#### Fail on Threats Detected
-
-```yaml
-- name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
-  id: scan
-  with:
-    upload: 'true'
-    api-key: ${{ secrets.UC_API_KEY }}
 
 - name: Fail if threats found
   if: steps.scan.outputs.threats-found > 0
-  run: |
-    echo "::error::Security scan found ${{ steps.scan.outputs.threats-found }} files with HIGH or MEDIUM threat levels!"
-    exit 1
+  run: exit 1
 ```
 
 ## CLI Usage

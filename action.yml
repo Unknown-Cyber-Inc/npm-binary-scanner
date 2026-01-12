@@ -59,6 +59,14 @@ inputs:
     description: 'File patterns to scan with YARA (e.g., "*.js,*.html"). If empty, scans binaries from results.'
     required: false
     default: ''
+  generate-summary:
+    description: 'Generate a summary report in GitHub Actions UI with links to UC reports'
+    required: false
+    default: 'false'
+  fail-on-threats:
+    description: 'Fail the action if HIGH/MEDIUM threats or high-severity YARA matches are found'
+    required: false
+    default: 'false'
 
 outputs:
   total-packages:
