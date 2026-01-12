@@ -411,7 +411,7 @@ These annotations appear in:
 
 When files already exist in UnknownCyber, the scanner automatically syncs tags:
 - Checks existing tags on each file
-- Adds missing `SW_<package>_<version>` and `REPO_<repo>` tags
+- Adds missing `SW_npm/<package>_<version>` and `REPO_<repo>` tags
 - Ensures consistent tagging across repositories
 
 ## YARA Scanning
@@ -561,7 +561,7 @@ When uploading to UnknownCyber, each executable is tagged with:
 |-------|--------|---------|
 | **Filename** | Path below `node_modules` | `@esbuild/win32-x64/esbuild.exe` |
 | **SHA256** | File hash | `e3b0c44298fc1c14...` |
-| **Package Tag** | `SW_<package>_<version>` | `SW_@esbuild/win32-x64_0.20.2` |
+| **Package Tag** | `SW_npm/<package>_<version>` | `SW_npm/@esbuild/win32-x64_0.20.2` |
 | **Repo Tag** | `REPO_<owner>/<repo>` | `REPO_my-org/my-app` |
 
 The repository tag helps identify which project the binary came from, useful when the same package version appears in multiple repositories.

@@ -583,7 +583,7 @@ async function syncTagsForExisting(existingFiles, apiUrl, apiKey, repo) {
       
       // Build expected tags
       const expectedTags = [];
-      expectedTags.push(`SW_${file.package}_${file.version}`.replace(/\s+/g, '_'));
+      expectedTags.push(`SW_npm/${file.package}_${file.version}`.replace(/\s+/g, '_'));
       if (repo) {
         expectedTags.push(`REPO_${repo}`.replace(/\s+/g, '_'));
       }
@@ -715,9 +715,9 @@ async function uploadBinaries(results, apiUrl, apiKey, repo, options = {}) {
   for (let i = 0; i < toUpload.length; i++) {
     const binary = toUpload[i];
     
-    // Build tags array: SW_<package>_<version> and optionally REPO_<repo>
+    // Build tags array: SW_npm/<package>_<version> and optionally REPO_<repo>
     const tags = [];
-    tags.push(`SW_${binary.package}_${binary.version}`.replace(/\s+/g, '_'));
+    tags.push(`SW_npm/${binary.package}_${binary.version}`.replace(/\s+/g, '_'));
     if (repo) {
       tags.push(`REPO_${repo}`.replace(/\s+/g, '_'));
     }
@@ -1230,7 +1230,7 @@ Upload Behavior:
 Upload Details:
   When --upload is specified, each executable is uploaded with:
   - Filename: Path relative to node_modules (e.g., "@esbuild/win32-x64/esbuild.exe")
-  - Tags: "SW_<package>_<version>" (e.g., "SW_@esbuild/win32-x64_0.20.2")
+  - Tags: "SW_npm/<package>_<version>" (e.g., "SW_npm/@esbuild/win32-x64_0.20.2")
           "REPO_<repo>" if --repo is specified (e.g., "REPO_my-org/my-repo")
 
 Output:
