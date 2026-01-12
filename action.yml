@@ -83,6 +83,10 @@ inputs:
     description: 'Fail the action if denied licenses are found'
     required: false
     default: 'false'
+  artifact-name:
+    description: 'Name for the uploaded artifact (use unique names when running multiple scans in same workflow)'
+    required: false
+    default: 'binary-scan-results'
 
 outputs:
   total-packages:
@@ -303,7 +307,7 @@ runs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: binary-scan-results
+        name: ${{ inputs.artifact-name }}
         path: |
           ${{ inputs.scan-path }}/binary-scan-results.json
           ${{ inputs.scan-path }}/yara-results.json

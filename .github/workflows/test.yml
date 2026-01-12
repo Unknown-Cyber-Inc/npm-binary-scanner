@@ -33,6 +33,7 @@ jobs:
         with:
           scan-path: 'test-project'
           deep-scan: 'true'
+          artifact-name: 'results-npm'
 
       - name: Verify npm detection
         run: |
@@ -90,6 +91,7 @@ jobs:
         with:
           scan-path: 'test-project'
           deep-scan: 'true'
+          artifact-name: 'results-pip'
 
       - name: Verify pip detection
         run: |
@@ -138,7 +140,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'maven'
+          # Don't use cache - we create pom.xml dynamically
 
       - name: Create maven test project
         run: |
@@ -172,6 +174,7 @@ jobs:
         with:
           scan-path: 'test-project'
           deep-scan: 'true'
+          artifact-name: 'results-maven'
 
       - name: Verify maven detection
         run: |
@@ -229,6 +232,7 @@ jobs:
         with:
           scan-path: 'test-project'
           deep-scan: 'true'
+          artifact-name: 'results-cargo'
 
       - name: Verify cargo detection
         run: |
@@ -287,6 +291,7 @@ jobs:
         with:
           scan-path: 'test-project'
           deep-scan: 'true'
+          artifact-name: 'results-go'
 
       - name: Verify go detection
         run: |
@@ -328,6 +333,7 @@ jobs:
         with:
           scan-path: 'test-project'
           deep-scan: 'true'
+          artifact-name: 'results-auto-detect'
 
       - name: Verify multiple ecosystems detected
         run: |
@@ -441,6 +447,7 @@ jobs:
           deep-scan: 'true'
           upload: 'true'
           api-key: ${{ secrets.UC_API_KEY }}
+          artifact-name: 'results-upload'
 
       - name: Check results
         run: |
@@ -497,6 +504,7 @@ jobs:
           scan-path: 'test-project'
           deep-scan: 'true'
           yara-scan: 'true'
+          artifact-name: 'results-yara'
 
       - name: Check YARA results
         run: |
@@ -533,6 +541,7 @@ jobs:
         with:
           scan-path: 'test-project'
           include-package-json: 'true'
+          artifact-name: 'results-package-json'
 
       - name: Check results
         run: |
@@ -566,6 +575,7 @@ jobs:
         with:
           scan-path: 'test-project'
           include-all-files: 'true'
+          artifact-name: 'results-all-files'
 
       - name: Check results
         run: |
