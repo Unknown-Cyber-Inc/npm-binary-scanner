@@ -379,61 +379,24 @@ This approach:
 
 ## Threat Levels
 
-When reputation data is fetched, files are categorized by threat level:
+Files are categorized by overall threat level based on the [Security Analysis](#security-analysis) factors:
 
 | Level | Description | Action |
 |-------|-------------|--------|
-| **HIGH** | Known malware or high-confidence malicious | 🔴 Immediate investigation required |
-| **MEDIUM** | Suspicious behavior or moderate risk | 🟠 Review recommended |
-| **CAUTION** | Minor concerns or low-confidence detections | 🟡 Monitor |
+| **HIGH** | Known malware, invalid signatures, or critical YARA matches | 🔴 Immediate investigation required |
+| **MEDIUM** | Suspicious similarity, moderate AV detections, or medium YARA matches | 🟠 Review recommended |
+| **CAUTION** | Minor AV detections, unsigned binaries, or low YARA matches | 🟡 Monitor |
 | **LOW** | Minimal risk indicators | 🟢 Generally safe |
 | **NONE** | No threats detected | ✅ Clean |
 | **UNKNOWN** | Not enough data for assessment | ❓ Pending analysis |
 
-Threat assessment is based on three factors:
+The overall threat level is the highest level from any of these factors:
+- **Antivirus Detection** — Multi-engine scan results
+- **Genomic Similarity** — Structural similarity to known malware
+- **Code Signature** — Digital signature validity
+- **YARA Matches** — Pattern-based detections
 
-### 1. Antivirus Results
-Detection ratio from multiple AV engines (typically ~76 scanners):
-
-| Detections | Level | Interpretation |
-|------------|-------|----------------|
-| ≥10% (8+/76) | HIGH | Serious concern - multiple engines agree |
-| ≥5% (4-7/76) | MEDIUM | Needs attention |
-| 2-3 detections | CAUTION | Worth investigating |
-| 1 detection | LOW | Likely false positive |
-| 0 detections | NONE | Clean |
-
-### 2. Genomic Similarity
-Code similarity to known malware families using UnknownCyber's genomic analysis:
-
-| Condition | Level | Interpretation |
-|-----------|-------|----------------|
-| Exact clone of known malware (100% match) | HIGH | Binary is identical to known threat |
-| Similar to known threats (<100% match) | MEDIUM | Shares code with malicious families |
-| Similar files exist, none malicious | LOW | Matches found but no known threats |
-| No similar files found | NONE | Unique or not in database |
-
-### 3. Code Signing
-Digital signature validity for Windows PE files:
-
-| Signature Status | Level | Interpretation |
-|------------------|-------|----------------|
-| Signed but invalid | HIGH | Signature tampered, expired, or revoked - strong indicator of compromise |
-| Unsigned | CAUTION | No authenticity guarantee - common for open-source binaries |
-| Valid signature | NONE | Verified publisher identity |
-| Unknown | UNKNOWN | Signature data unavailable |
-
-### 4. YARA Pattern Matching
-Local scanning using YARA rules to detect malware patterns:
-
-| Severity (from rule metadata) | Level | Interpretation |
-|------------------------------|-------|----------------|
-| `critical` | HIGH | Known malware signatures, active threats |
-| `high` | HIGH | Strong indicators of malicious behavior |
-| `medium` | MEDIUM | Suspicious patterns worth investigating |
-| `low` | LOW | Minor concerns, informational |
-
-See [YARA Scanning](#yara-scanning) for usage examples and pipeline blocking.
+See [Security Analysis](#security-analysis) for detailed thresholds and explanations of each factor.
 
 ## GitHub Actions Annotations
 
@@ -543,20 +506,14 @@ python yara_scanner.py --dir ./node_modules --include "*.js" --rules ./my-rules 
 python yara_scanner.py --input results.json --output yara.json --github-annotations
 ```
 
-### YARA Results & Outputs
+### YARA Outputs
 
-YARA matches are reported with severity levels from rule metadata:
+| Output | Description |
+|--------|-------------|
+| `yara-matches` | Total files with any YARA match |
+| `yara-high-severity` | Files matching critical/high severity rules |
 
-| Severity | Description | Annotation |
-|----------|-------------|------------|
-| **critical** | Known malware, active threats | 🔴 `::error::` |
-| **high** | Strong indicators of malicious behavior | 🔴 `::error::` |
-| **medium** | Suspicious patterns worth investigating | 🟡 `::warning::` |
-| **low** | Minor concerns, informational | 🔵 `::notice::` |
-
-**Outputs:**
-- `yara-matches`: Total files with any YARA match
-- `yara-high-severity`: Files matching critical/high severity rules
+Severity levels (`critical`, `high`, `medium`, `low`) are defined in rule metadata and map to [Threat Levels](#threat-levels).
 
 ### Block Pipeline on YARA Matches
 
