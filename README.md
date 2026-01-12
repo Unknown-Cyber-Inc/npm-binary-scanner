@@ -16,6 +16,14 @@ NPM packages can include pre-compiled native binaries and executable scripts. Wh
 | **Vulnerability Gaps** | Memory-unsafe languages (C/C++) can have vulnerabilities not caught by JS tooling |
 | **Post-Install Scripts** | Scripts in `preinstall`/`postinstall` hooks can execute malware |
 
+### Dependency Inventory & SBOM Compliance
+
+Beyond security scanning, uploading to UnknownCyber builds a **centralized inventory** of all third-party packages across your organization's repositories. Each file is tagged with package name, version, and source repository—giving you a single source of truth for dependency tracking. This helps organizations:
+
+- **Know what's deployed** — See all third-party components across projects
+- **Track versions** — Monitor which versions are in use, including in released software
+- **Meet SBOM regulations** — Comply with requirements like Executive Order 14028, NTIA guidelines, and customer audits
+
 ## Security Analysis
 
 This tool performs multiple layers of security analysis to detect threats that traditional scanners miss:
