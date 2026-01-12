@@ -81,6 +81,8 @@ const SKIP_PATTERNS = [
 ];
 
 let deepMagicScan = false;
+let includePackageJson = false;
+let includeAllFiles = false;
 let scannedDirs = 0;
 let scannedFiles = 0;
 
@@ -166,9 +168,15 @@ function isScriptByExtension(filePath) {
 }
 
 /**
- * Should skip this file based on patterns?
+ * Should skip this file based on patterns and scan mode?
  */
 function shouldSkipFile(filename) {
+  // If including all files, don't skip anything
+  if (includeAllFiles) return false;
+  
+  // If including package.json, don't skip it
+  if (includePackageJson && filename === 'package.json') return false;
+  
   return SKIP_PATTERNS.some(pattern => pattern.test(filename));
 }
 
@@ -247,11 +255,11 @@ function scanDirectory(dir, nodeModulesRoot, results, visited = new Set()) {
       } else if (entry.isFile()) {
         scannedFiles++;
         
-        // Skip files that definitely won't be binaries or scripts
+        // Skip files that definitely won't be of interest
         if (shouldSkipFile(entry.name)) continue;
         
         let detectedType = null;
-        let category = 'binary'; // 'binary' or 'script'
+        let category = 'binary'; // 'binary', 'script', 'metadata', or 'other'
         
         // Check for binary by extension first (faster)
         if (isBinaryByExtension(fullPath)) {
@@ -262,12 +270,23 @@ function scanDirectory(dir, nodeModulesRoot, results, visited = new Set()) {
           detectedType = path.extname(fullPath).toLowerCase().slice(1).toUpperCase();
           category = 'script';
         }
+        // Check for package.json (for SBOM)
+        else if ((includePackageJson || includeAllFiles) && entry.name === 'package.json') {
+          detectedType = 'JSON';
+          category = 'metadata';
+        }
         // Deep scan: check magic bytes for binaries without known extensions
         else if (deepMagicScan) {
           const magicType = checkMagicBytes(fullPath);
           if (magicType) {
             detectedType = magicType;
           }
+        }
+        // Include all other files if in all-files mode
+        else if (includeAllFiles) {
+          const ext = path.extname(fullPath).toLowerCase();
+          detectedType = ext ? ext.slice(1).toUpperCase() : 'FILE';
+          category = 'other';
         }
 
         if (detectedType) {
@@ -300,13 +319,18 @@ function generateBoundary() {
 
 /**
  * Upload a file to UnknownCyber API using streams for large files
+ * @param {string} apiUrl - API base URL
+ * @param {string} apiKey - API key
+ * @param {string} filePath - Local file path
+ * @param {string} filename - Filename for upload
+ * @param {string[]} tags - Array of tags to attach
  */
-function uploadFile(apiUrl, apiKey, filePath, filename, tag) {
+function uploadFile(apiUrl, apiKey, filePath, filename, tags) {
   return new Promise((resolve, reject) => {
     const boundary = generateBoundary();
     const fileSize = fs.statSync(filePath).size;
     
-    // Query parameters for upload
+    // Build query parameters - each tag as separate tags[] parameter
     const queryParams = new URLSearchParams({
       key: apiKey,
       skip_unpack: 'false',
@@ -315,24 +339,39 @@ function uploadFile(apiUrl, apiKey, filePath, filename, tag) {
       retain_wrapper: 'true',
       no_links: 'true'
     });
+    // Add each tag as a separate tags[] query parameter
+    for (const tag of tags) {
+      queryParams.append('tags[]', tag);
+    }
     
     const url = new URL(`${apiUrl}/v2/files?${queryParams.toString()}`);
     
-    // Build form data parts
-    const fields = {
-      filename: filename,
-      tags: tag,
-      notes: `Binary from npm package, scanned on ${new Date().toISOString()}`,
-      password: ''
-    };
-    
-    // Pre-file parts
+    // Build form data parts - each tag as separate multipart section
     let preFileData = '';
-    for (const [name, value] of Object.entries(fields)) {
+    
+    // Filename field
+    preFileData += `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="filename"\r\n\r\n` +
+      `${filename}\r\n`;
+    
+    // Each tag as a separate form-data part with name="tags"
+    for (const tag of tags) {
       preFileData += `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
-        `${value}\r\n`;
+        `Content-Disposition: form-data; name="tags"\r\n\r\n` +
+        `${tag}\r\n`;
     }
+    
+    // Notes field
+    preFileData += `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="notes"\r\n\r\n` +
+      `Binary from npm package, scanned on ${new Date().toISOString()}\r\n`;
+    
+    // Password field (empty)
+    preFileData += `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="password"\r\n\r\n` +
+      `\r\n`;
+    
+    // File data part header
     preFileData += `--${boundary}\r\n` +
       `Content-Disposition: form-data; name="filedata"; filename="${path.basename(filePath)}"\r\n` +
       `Content-Type: application/octet-stream\r\n\r\n`;
@@ -544,7 +583,7 @@ async function syncTagsForExisting(existingFiles, apiUrl, apiKey, repo) {
       
       // Build expected tags
       const expectedTags = [];
-      expectedTags.push(`SW_${file.package}@${file.version}`.replace(/\s+/g, '_'));
+      expectedTags.push(`SW_npm/${file.package}_${file.version}`.replace(/\s+/g, '_'));
       if (repo) {
         expectedTags.push(`REPO_${repo}`.replace(/\s+/g, '_'));
       }
@@ -636,9 +675,14 @@ async function uploadBinaries(results, apiUrl, apiKey, repo, options = {}) {
       tagSyncResults = await syncTagsForExisting(existingFiles, apiUrl, apiKey, repo);
     }
     
-    // Get reputations for existing files if enabled
+    // Get reputations for existing EXECUTABLE files only (not metadata/other)
     if (getReputations && existingFiles.length > 0) {
-      existingReputations = await getReputationsForExisting(existingFiles, apiUrl, apiKey);
+      const executableFiles = existingFiles.filter(f => 
+        f.category === 'binary' || f.category === 'script' || !f.category
+      );
+      if (executableFiles.length > 0) {
+        existingReputations = await getReputationsForExisting(executableFiles, apiUrl, apiKey);
+      }
     }
   }
   
@@ -671,13 +715,12 @@ async function uploadBinaries(results, apiUrl, apiKey, repo, options = {}) {
   for (let i = 0; i < toUpload.length; i++) {
     const binary = toUpload[i];
     
-    // Build tags array: SW_<package>@<version> and optionally REPO_<repo>
+    // Build tags array: SW_npm/<package>_<version> and optionally REPO_<repo>
     const tags = [];
-    tags.push(`SW_${binary.package}@${binary.version}`.replace(/\s+/g, '_'));
+    tags.push(`SW_npm/${binary.package}_${binary.version}`.replace(/\s+/g, '_'));
     if (repo) {
       tags.push(`REPO_${repo}`.replace(/\s+/g, '_'));
     }
-    const tagString = tags.join(',');
     
     // Filename is the path below node_modules (using forward slashes)
     const filename = binary.file.replace(/\\/g, '/');
@@ -685,7 +728,7 @@ async function uploadBinaries(results, apiUrl, apiKey, repo, options = {}) {
     process.stdout.write(`[${i + 1}/${toUpload.length}] Uploading ${filename}... `);
     
     try {
-      const result = await uploadFile(apiUrl, apiKey, binary.absolutePath, filename, tagString);
+      const result = await uploadFile(apiUrl, apiKey, binary.absolutePath, filename, tags);
       
         if (result.success) {
           console.log('\x1b[32m✓ OK\x1b[0m');
@@ -921,6 +964,8 @@ async function scanNodeModules(targetDir, options = {}) {
   const byPackage = {};
   let totalBinaries = 0;
   let totalScripts = 0;
+  let totalMetadata = 0;
+  let totalOther = 0;
   
   for (const result of results) {
     const key = `${result.package}@${result.version}`;
@@ -937,10 +982,18 @@ async function scanNodeModules(targetDir, options = {}) {
       category: result.category || 'binary'
     });
     
-    if (result.category === 'script') {
-      totalScripts++;
-    } else {
-      totalBinaries++;
+    switch (result.category) {
+      case 'script':
+        totalScripts++;
+        break;
+      case 'metadata':
+        totalMetadata++;
+        break;
+      case 'other':
+        totalOther++;
+        break;
+      default:
+        totalBinaries++;
     }
   }
 
@@ -965,8 +1018,24 @@ async function scanNodeModules(targetDir, options = {}) {
       console.log('-'.repeat(60));
       
       for (const file of pkg.files) {
-        const categoryIcon = file.category === 'script' ? '📜' : '⚙️';
-        const typeColor = file.category === 'script' ? '\x1b[35m' : '\x1b[32m'; // magenta for scripts, green for binaries
+        let categoryIcon, typeColor;
+        switch (file.category) {
+          case 'script':
+            categoryIcon = '📜';
+            typeColor = '\x1b[35m'; // magenta
+            break;
+          case 'metadata':
+            categoryIcon = '📋';
+            typeColor = '\x1b[36m'; // cyan
+            break;
+          case 'other':
+            categoryIcon = '📄';
+            typeColor = '\x1b[90m'; // gray
+            break;
+          default:
+            categoryIcon = '⚙️';
+            typeColor = '\x1b[32m'; // green
+        }
         console.log(`   ${categoryIcon} [${typeColor}${file.type.padEnd(8)}\x1b[0m] ${file.file}`);
         totalFiles++;
       }
@@ -976,10 +1045,12 @@ async function scanNodeModules(targetDir, options = {}) {
     console.log('='.repeat(80));
     console.log('SUMMARY');
     console.log('='.repeat(80));
-    console.log(`Total packages with executables: ${sortedPackages.length}`);
-    console.log(`Total executable files found: ${totalFiles}`);
+    console.log(`Total packages with files: ${sortedPackages.length}`);
+    console.log(`Total files found: ${totalFiles}`);
     console.log(`  - Binary files: ${totalBinaries}`);
     console.log(`  - Script files: ${totalScripts}`);
+    if (totalMetadata > 0) console.log(`  - Metadata files: ${totalMetadata}`);
+    if (totalOther > 0) console.log(`  - Other files: ${totalOther}`);
     console.log(`Directories scanned: ${scannedDirs}`);
     console.log(`Files checked: ${scannedFiles}`);
     console.log(`Scan completed in: ${elapsed}s`);
@@ -990,10 +1061,14 @@ async function scanNodeModules(targetDir, options = {}) {
     scanPath: nodeModulesPath,
     scanDate: new Date().toISOString(),
     deepScan: deepMagicScan,
+    includePackageJson: includePackageJson,
+    includeAllFiles: includeAllFiles,
     totalPackages: sortedPackages.length,
-    totalExecutables: results.length,
+    totalFiles: results.length,
     totalBinaries: totalBinaries,
     totalScripts: totalScripts,
+    totalMetadata: totalMetadata,
+    totalOther: totalOther,
     directoriesScanned: scannedDirs,
     filesChecked: scannedFiles,
     packages: sortedPackages
@@ -1037,6 +1112,8 @@ function parseArgs(args) {
     upload: false,
     skipExisting: true,
     getReputations: true,
+    includePackageJson: false,
+    includeAllFiles: false,
     apiUrl: process.env.UC_API_URL || '',
     apiKey: process.env.UC_API_KEY || '',
     repo: process.env.UC_REPO || ''
@@ -1056,6 +1133,10 @@ function parseArgs(args) {
       options.skipExisting = false;
     } else if (arg === '--no-reputations') {
       options.getReputations = false;
+    } else if (arg === '--include-package-json' || arg === '--package-json') {
+      options.includePackageJson = true;
+    } else if (arg === '--all-files') {
+      options.includeAllFiles = true;
     } else if (arg === '--api-url') {
       options.apiUrl = args[++i];
     } else if (arg === '--api-key') {
@@ -1083,12 +1164,20 @@ Usage:
 
 Options:
   --deep              Enable deep scan using magic bytes (slower but finds more)
-  --upload            Upload found executables to UnknownCyber API
+  --upload            Upload found files to UnknownCyber API
   --force-upload      Upload all files even if they already exist in UC
   --no-reputations    Skip fetching reputation data for existing files
+
+File Selection:
+  --include-package-json  Include package.json files (for SBOM creation)
+  --all-files             Include ALL files in node_modules (not just executables)
+
+API Configuration:
   --api-url <url>     API base URL (or set UC_API_URL env var)
   --api-key <key>     API key for authentication (or set UC_API_KEY env var)
   --repo <name>       Repository name to tag uploads with (or set UC_REPO env var)
+
+General:
   --help, -h          Show this help message
 
 Examples:
@@ -1141,7 +1230,7 @@ Upload Behavior:
 Upload Details:
   When --upload is specified, each executable is uploaded with:
   - Filename: Path relative to node_modules (e.g., "@esbuild/win32-x64/esbuild.exe")
-  - Tags: "SW_<package>@<version>" (e.g., "SW_@esbuild/win32-x64@0.20.2")
+  - Tags: "SW_npm/<package>_<version>" (e.g., "SW_npm/@esbuild/win32-x64_0.20.2")
           "REPO_<repo>" if --repo is specified (e.g., "REPO_my-org/my-repo")
 
 Output:
@@ -1156,5 +1245,7 @@ const args = process.argv.slice(2);
 const options = parseArgs(args);
 
 deepMagicScan = options.deep;
+includePackageJson = options.includePackageJson;
+includeAllFiles = options.includeAllFiles;
 
 scanNodeModules(options.targetDir, options);

@@ -30,7 +30,7 @@ jobs:
 
       - name: Scan npm binaries (deep scan)
         id: scan
-        uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+        uses: Unknown-Cyber-Inc/npm-package-scanner@v1
         with:
           deep-scan: 'true'
           upload: 'true'

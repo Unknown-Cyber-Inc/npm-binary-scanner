@@ -1,10 +1,10 @@
-# NPM Binary Scanner
+# NPM Package Scanner
 
-[![Test Action](https://github.com/Unknown-Cyber-Inc/npm-binary-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/npm-binary-scanner/actions/workflows/test.yml)
+[![Test Action](https://github.com/Unknown-Cyber-Inc/npm-package-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/npm-package-scanner/actions/workflows/test.yml)
 
-A GitHub Action and CLI tool that scans npm packages (`node_modules`) for binary executables like DLL, EXE, ELF, SO, and other binary files. It reports which packages contain binaries along with their version numbers, and can optionally upload them to UnknownCyber for security analysis.
+A GitHub Action and CLI tool that scans npm packages (`node_modules`) for security threats. It detects binary executables, scripts, and suspicious patterns, then uploads them to UnknownCyber for multi-layer threat analysis including AV scanning, genomic similarity, and SBOM tracking.
 
-## Why Scan for Binaries?
+## Why Scan NPM Packages?
 
 NPM packages can include pre-compiled native binaries and executable scripts. While often legitimate (e.g., `esbuild`, `sharp`), these pose unique security risks:
 
@@ -15,24 +15,88 @@ NPM packages can include pre-compiled native binaries and executable scripts. Wh
 | **License Compliance** | Native binaries may carry different licensing terms than the JavaScript wrapper |
 | **Vulnerability Gaps** | Memory-unsafe languages (C/C++) can have vulnerabilities not caught by JS tooling |
 | **Post-Install Scripts** | Scripts in `preinstall`/`postinstall` hooks can execute malware |
+| **Regulatory Compliance** | SBOM requirements (EO 14028, NTIA) demand visibility into all software components |
 
-This tool helps you:
-- **Audit** which packages contain native code
-- **Upload** binaries to UnknownCyber for malware analysis
-- **Monitor** known threats in your dependency tree
-- **Alert** on suspicious or malicious files
+## Security Analysis
+
+This tool performs multiple layers of security analysis to detect threats that traditional scanners miss:
+
+### 🦠 Antivirus Detection
+
+Files are scanned by **70+ antivirus engines** via UnknownCyber. This multi-engine approach catches threats that any single AV might miss, providing comprehensive malware detection with minimal false negatives.
+
+| Detection Ratio | Threat Level | Action |
+|-----------------|--------------|--------|
+| ≥10% of engines | 🔴 HIGH | Block pipeline, immediate investigation |
+| ≥1% of engines | 🟡 MEDIUM | Warning, review recommended |
+| Any detection | 🟠 CAUTION | Notice, monitor for changes |
+
+### 🧬 Genomic Similarity Analysis
+
+Beyond signature-based detection, UnknownCyber analyzes the **structural DNA** of executables. This catches:
+
+- **Zero-day threats**: Malware variants that haven't been catalogued yet
+- **Polymorphic malware**: Code that mutates to evade signatures
+- **Repacked threats**: Known malware hidden in new wrappers
+- **Code reuse**: Components borrowed from known malicious families
+- **Vulnerable code**: Libraries with known CVEs reused across packages
+- **Trojanized packages**: Malicious code injected between versions—a common supply chain attack TTP
+
+Even if a file is brand new and has zero AV detections, genomic analysis can identify it as structurally similar to known threats—catching attacks before they're widely recognized.
+
+By tracking code across successive versions, UnknownCyber can detect when legitimate packages are compromised—identifying the exact code changes that introduce backdoors or malware, even when attackers try to hide modifications in otherwise normal updates.
+
+### 🔍 YARA Pattern Scanning
+
+Local pattern matching using YARA rules detects:
+
+- **Obfuscated JavaScript**: Encoded payloads, suspicious string patterns
+- **Crypto miners**: Mining pools, XMRig, CPU/GPU miner signatures
+- **Backdoors & Webshells**: Remote access tools, command injection patterns
+- **Suspicious behaviors**: PowerShell cradles, process injection, anti-debugging
+
+Bundled rules target npm-specific threats like the Shai Hulud worm and other supply chain attacks.
+
+### ✍️ Code Signature Verification
+
+Validates digital signatures on executables to establish trust:
+
+| Status | Meaning |
+|--------|---------|
+| ✅ **Valid** | Signed by trusted publisher, signature intact |
+| ⚠️ **Invalid** | Signature broken or tampered |
+| ❓ **Unsigned** | No signature (common for open-source tools) |
+
+Invalid signatures are strong indicators of tampering and warrant immediate investigation.
+
+### 📦 Dependency Inventory & SBOM Compliance
+
+Beyond security scanning, uploading to UnknownCyber builds a **centralized inventory** of all third-party packages across your organization's repositories. Each file is tagged with package name, version, and source repository—giving you a single source of truth for dependency tracking. This helps organizations:
+
+- **Know what's deployed** — See all third-party components across projects
+- **Track versions** — Monitor which versions are in use, including in released software
+- **Meet SBOM regulations** — Comply with requirements like Executive Order 14028, NTIA guidelines, and customer audits
+
+### 🔮 Coming Soon
+
+| Feature | Description |
+|---------|-------------|
+| **CVE Scanning** | Check binaries against known vulnerabilities database |
+| **License Compliance** | Detect license conflicts in native dependencies |
+| **Security Hardening** | Verify ASLR, DEP, stack canaries, and other protections |
+| **SBOM Generation** | Software Bill of Materials for dependency tracking |
 
 ## Features
 
 - 🔍 **Comprehensive Detection**: Identifies binaries by file extension and magic bytes
 - 📦 **Package Attribution**: Associates each binary with its parent npm package and version
 - 🔄 **Handles Nested Dependencies**: Scans all direct and transitive dependencies  
-- ☁️ **UnknownCyber Integration**: Upload binaries for malware analysis
-- 🔒 **Smart Deduplication**: Skips files already in UnknownCyber to save time and bandwidth
-- ⚠️ **Threat Detection**: Fetches and displays reputation data for existing files
-- 🧬 **YARA Scanning**: Local pattern matching for malware and suspicious patterns
+- ☁️ **UnknownCyber Integration**: Upload binaries for multi-layer threat analysis
+- 🔒 **Smart Deduplication**: Skips files already analyzed to save time and bandwidth
+- 🏷️ **Automatic Tagging**: Tags files with package manager, package name, version, and repository
+- ⚠️ **Pipeline Integration**: Blocks CI/CD on high-severity threats with detailed annotations
 - 📊 **Detailed Reports**: JSON output with full scan results and threat assessments
-- 🚀 **GitHub Action**: Easy CI/CD integration
+- 🚀 **GitHub Action & CLI**: Flexible integration options
 
 ## Quick Start
 
@@ -61,7 +125,7 @@ jobs:
       - run: npm ci
       
       - name: Scan binaries
-        uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+        uses: Unknown-Cyber-Inc/npm-package-scanner@v1
         with:
           upload: 'true'
           api-key: ${{ secrets.UC_API_KEY }}
@@ -71,9 +135,9 @@ jobs:
 
 ```bash
 # Clone and run directly
-git clone https://github.com/Unknown-Cyber-Inc/npm-binary-scanner.git
+git clone https://github.com/Unknown-Cyber-Inc/npm-package-scanner.git
 cd your-project
-node path/to/npm-binary-scanner/scanner.js
+node path/to/npm-package-scanner/scanner.js
 
 # With upload
 node scanner.js --upload --api-key YOUR_API_KEY
@@ -87,9 +151,11 @@ node scanner.js --upload --api-key YOUR_API_KEY
 |-------|-------------|----------|---------|
 | `scan-path` | Path to directory containing node_modules | No | `.` |
 | `deep-scan` | Enable magic bytes detection (slower) | No | `false` |
-| `upload` | Upload binaries to UnknownCyber | No | `false` |
+| `upload` | Upload files to UnknownCyber | No | `false` |
 | `skip-existing` | Skip files already in UnknownCyber | No | `true` |
 | `get-reputations` | Fetch threat data for existing files | No | `true` |
+| `include-package-json` | Include package.json files (for SBOM) | No | `false` |
+| `include-all-files` | Include ALL files (not just executables) | No | `false` |
 | `api-url` | UnknownCyber API URL | No | `https://api.unknowncyber.com` |
 | `api-key` | UnknownCyber API key | No | `''` |
 | `repo` | Repository name to tag uploads with | No | `${{ github.repository }}` |
@@ -117,7 +183,7 @@ node scanner.js --upload --api-key YOUR_API_KEY
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
 
 - name: Report
@@ -128,7 +194,7 @@ node scanner.js --upload --api-key YOUR_API_KEY
 
 ```yaml
 - name: Scan and upload binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     upload: 'true'
@@ -151,7 +217,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Force upload all binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     upload: 'true'
     skip-existing: 'false'  # Upload even if file exists
@@ -162,7 +228,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Quick scan and upload
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     upload: 'true'
     get-reputations: 'false'  # Don't fetch threat data for existing files
@@ -173,7 +239,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Deep scan frontend
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     scan-path: './packages/frontend'
     deep-scan: 'true'
@@ -181,11 +247,39 @@ By default, the scanner will:
     api-key: ${{ secrets.UC_API_KEY }}
 ```
 
+#### Include package.json for SBOM
+
+Upload package.json files to enable Software Bill of Materials (SBOM) creation:
+
+```yaml
+- name: Scan with SBOM support
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  with:
+    upload: 'true'
+    include-package-json: 'true'
+    api-key: ${{ secrets.UC_API_KEY }}
+```
+
+#### Upload All Files
+
+Upload everything in node_modules (executables, metadata, source files):
+
+```yaml
+- name: Full package upload
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  with:
+    upload: 'true'
+    include-all-files: 'true'
+    api-key: ${{ secrets.UC_API_KEY }}
+```
+
+Note: Reputation data is only fetched for executable files (binaries and scripts), not for metadata or other files.
+
 #### Add Results to PR Summary
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     upload: 'true'
@@ -205,7 +299,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     upload: 'true'
@@ -298,61 +392,24 @@ This approach:
 
 ## Threat Levels
 
-When reputation data is fetched, files are categorized by threat level:
+Files are categorized by overall threat level based on the [Security Analysis](#security-analysis) factors:
 
 | Level | Description | Action |
 |-------|-------------|--------|
-| **HIGH** | Known malware or high-confidence malicious | 🔴 Immediate investigation required |
-| **MEDIUM** | Suspicious behavior or moderate risk | 🟠 Review recommended |
-| **CAUTION** | Minor concerns or low-confidence detections | 🟡 Monitor |
+| **HIGH** | Known malware, invalid signatures, or critical YARA matches | 🔴 Immediate investigation required |
+| **MEDIUM** | Suspicious similarity, moderate AV detections, or medium YARA matches | 🟠 Review recommended |
+| **CAUTION** | Minor AV detections, unsigned binaries, or low YARA matches | 🟡 Monitor |
 | **LOW** | Minimal risk indicators | 🟢 Generally safe |
 | **NONE** | No threats detected | ✅ Clean |
 | **UNKNOWN** | Not enough data for assessment | ❓ Pending analysis |
 
-Threat assessment is based on three factors:
+The overall threat level is the highest level from any of these factors:
+- **Antivirus Detection** — Multi-engine scan results
+- **Genomic Similarity** — Structural similarity to known malware
+- **Code Signature** — Digital signature validity
+- **YARA Matches** — Pattern-based detections
 
-### 1. Antivirus Results
-Detection ratio from multiple AV engines (typically ~76 scanners):
-
-| Detections | Level | Interpretation |
-|------------|-------|----------------|
-| ≥10% (8+/76) | HIGH | Serious concern - multiple engines agree |
-| ≥5% (4-7/76) | MEDIUM | Needs attention |
-| 2-3 detections | CAUTION | Worth investigating |
-| 1 detection | LOW | Likely false positive |
-| 0 detections | NONE | Clean |
-
-### 2. Genomic Similarity
-Code similarity to known malware families using UnknownCyber's genomic analysis:
-
-| Condition | Level | Interpretation |
-|-----------|-------|----------------|
-| Exact clone of known malware (100% match) | HIGH | Binary is identical to known threat |
-| Similar to known threats (<100% match) | MEDIUM | Shares code with malicious families |
-| Similar files exist, none malicious | LOW | Matches found but no known threats |
-| No similar files found | NONE | Unique or not in database |
-
-### 3. Code Signing
-Digital signature validity for Windows PE files:
-
-| Signature Status | Level | Interpretation |
-|------------------|-------|----------------|
-| Signed but invalid | HIGH | Signature tampered, expired, or revoked - strong indicator of compromise |
-| Unsigned | CAUTION | No authenticity guarantee - common for open-source binaries |
-| Valid signature | NONE | Verified publisher identity |
-| Unknown | UNKNOWN | Signature data unavailable |
-
-### 4. YARA Pattern Matching
-Local scanning using YARA rules to detect malware patterns:
-
-| Severity (from rule metadata) | Level | Interpretation |
-|------------------------------|-------|----------------|
-| `critical` | HIGH | Known malware signatures, active threats |
-| `high` | HIGH | Strong indicators of malicious behavior |
-| `medium` | MEDIUM | Suspicious patterns worth investigating |
-| `low` | LOW | Minor concerns, informational |
-
-See [YARA Scanning](#yara-scanning) for usage examples and pipeline blocking.
+See [Security Analysis](#security-analysis) for detailed thresholds and explanations of each factor.
 
 ## GitHub Actions Annotations
 
@@ -381,7 +438,7 @@ These annotations appear in:
 
 When files already exist in UnknownCyber, the scanner automatically syncs tags:
 - Checks existing tags on each file
-- Adds missing `SW_<package>_<version>` and `REPO_<repo>` tags
+- Adds missing `SW_npm/<package>_<version>` and `REPO_<repo>` tags
 - Ensures consistent tagging across repositories
 
 ## YARA Scanning
@@ -392,7 +449,7 @@ The scanner includes optional YARA scanning to detect malware patterns and suspi
 
 ```yaml
 - name: Scan binaries with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
 ```
@@ -403,7 +460,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan JS files with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
     yara-include: '*.js'
@@ -413,7 +470,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan JS, HTML, and MJS files
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
     yara-include: '*.js,*.html,*.mjs'
@@ -423,7 +480,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan with custom YARA rules
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   with:
     yara-scan: 'true'
     yara-rules: './my-rules'  # Path to your .yar files
@@ -462,26 +519,20 @@ python yara_scanner.py --dir ./node_modules --include "*.js" --rules ./my-rules 
 python yara_scanner.py --input results.json --output yara.json --github-annotations
 ```
 
-### YARA Results & Outputs
+### YARA Outputs
 
-YARA matches are reported with severity levels from rule metadata:
+| Output | Description |
+|--------|-------------|
+| `yara-matches` | Total files with any YARA match |
+| `yara-high-severity` | Files matching critical/high severity rules |
 
-| Severity | Description | Annotation |
-|----------|-------------|------------|
-| **critical** | Known malware, active threats | 🔴 `::error::` |
-| **high** | Strong indicators of malicious behavior | 🔴 `::error::` |
-| **medium** | Suspicious patterns worth investigating | 🟡 `::warning::` |
-| **low** | Minor concerns, informational | 🔵 `::notice::` |
-
-**Outputs:**
-- `yara-matches`: Total files with any YARA match
-- `yara-high-severity`: Files matching critical/high severity rules
+Severity levels (`critical`, `high`, `medium`, `low`) are defined in rule metadata and map to [Threat Levels](#threat-levels).
 
 ### Block Pipeline on YARA Matches
 
 ```yaml
 - name: Scan with YARA
-  uses: Unknown-Cyber-Inc/npm-binary-scanner@v1
+  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
   id: scan
   with:
     yara-scan: 'true'
@@ -531,7 +582,7 @@ When uploading to UnknownCyber, each executable is tagged with:
 |-------|--------|---------|
 | **Filename** | Path below `node_modules` | `@esbuild/win32-x64/esbuild.exe` |
 | **SHA256** | File hash | `e3b0c44298fc1c14...` |
-| **Package Tag** | `SW_<package>_<version>` | `SW_@esbuild/win32-x64_0.20.2` |
+| **Package Tag** | `SW_npm/<package>_<version>` | `SW_npm/@esbuild/win32-x64_0.20.2` |
 | **Repo Tag** | `REPO_<owner>/<repo>` | `REPO_my-org/my-app` |
 
 The repository tag helps identify which project the binary came from, useful when the same package version appears in multiple repositories.
