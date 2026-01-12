@@ -1,10 +1,10 @@
-# NPM Binary Scanner
+# NPM Package Scanner
 
 [![Test Action](https://github.com/Unknown-Cyber-Inc/npm-binary-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/npm-binary-scanner/actions/workflows/test.yml)
 
-A GitHub Action and CLI tool that scans npm packages (`node_modules`) for binary executables like DLL, EXE, ELF, SO, and other binary files. It reports which packages contain binaries along with their version numbers, and can optionally upload them to UnknownCyber for security analysis.
+A GitHub Action and CLI tool that scans npm packages (`node_modules`) for security threats. It detects binary executables, scripts, and suspicious patterns, then uploads them to UnknownCyber for multi-layer threat analysis including AV scanning, genomic similarity, and SBOM tracking.
 
-## Why Scan for Binaries?
+## Why Scan NPM Packages?
 
 NPM packages can include pre-compiled native binaries and executable scripts. While often legitimate (e.g., `esbuild`, `sharp`), these pose unique security risks:
 
