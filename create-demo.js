@@ -261,15 +261,23 @@ jobs:
             echo "### 🛡️ Security Findings" >> \$GITHUB_STEP_SUMMARY
             echo "" >> \$GITHUB_STEP_SUMMARY
             
-            # Extract findings using Node.js
+            # Extract findings using Node.js with links to UC reports
             node -e "
               const fs = require('fs');
               const results = JSON.parse(fs.readFileSync('binary-scan-results.json', 'utf8'));
               const reps = results.uploadResults?.reputations || [];
+              const UC_BASE = 'https://unknowncyber.com/files';
               
               const high = reps.filter(r => r.reputation?.overallThreatLevel === 'high');
               const medium = reps.filter(r => r.reputation?.overallThreatLevel === 'medium');
               const caution = reps.filter(r => r.reputation?.overallThreatLevel === 'caution');
+              
+              const makeLink = (file, sha256) => {
+                if (sha256) {
+                  return '[' + file + '](' + UC_BASE + '/' + sha256 + '/report/)';
+                }
+                return file;
+              };
               
               let output = '';
               
@@ -280,7 +288,7 @@ jobs:
                   const issues = [];
                   if (r.reputation?.av?.threatLevel === 'high') issues.push('AV: ' + r.reputation.av.detected + '/' + r.reputation.av.total);
                   if (r.reputation?.similarity?.threatLevel === 'high') issues.push('Similarity: ' + r.reputation.similarity.score);
-                  output += '| ' + r.file + ' | ' + issues.join(', ') + ' |\\n';
+                  output += '| ' + makeLink(r.file, r.sha256) + ' | ' + issues.join(', ') + ' |\\n';
                 });
                 output += '\\n';
               }
@@ -292,7 +300,7 @@ jobs:
                   const issues = [];
                   if (r.reputation?.av?.threatLevel === 'medium') issues.push('AV: ' + r.reputation.av.detected + '/' + r.reputation.av.total);
                   if (r.reputation?.similarity?.threatLevel === 'medium') issues.push('Similarity: ' + r.reputation.similarity.score);
-                  output += '| ' + r.file + ' | ' + issues.join(', ') + ' |\\n';
+                  output += '| ' + makeLink(r.file, r.sha256) + ' | ' + issues.join(', ') + ' |\\n';
                 });
                 output += '\\n';
               }
@@ -304,7 +312,7 @@ jobs:
                   const issues = [];
                   if (r.reputation?.signature?.threatLevel === 'caution') issues.push('Unsigned binary');
                   if (r.reputation?.av?.threatLevel === 'caution') issues.push('AV: ' + r.reputation.av.detected + '/' + r.reputation.av.total);
-                  output += '| ' + r.file + ' | ' + issues.join(', ') + ' |\\n';
+                  output += '| ' + makeLink(r.file, r.sha256) + ' | ' + issues.join(', ') + ' |\\n';
                 });
                 output += '\\n';
               }
@@ -317,20 +325,23 @@ jobs:
             " >> \$GITHUB_STEP_SUMMARY
           fi
           
-          # YARA findings
+          # YARA findings with links to UC reports
           if [ -f "yara-results.json" ]; then
             node -e "
               const fs = require('fs');
               const results = JSON.parse(fs.readFileSync('yara-results.json', 'utf8'));
+              const UC_BASE = 'https://unknowncyber.com/files';
               
               if (results.results && results.results.length > 0) {
                 let output = '### 🔎 YARA Matches\\n';
                 output += '| File | Rule | Severity |\\n|------|------|----------|\\n';
                 results.results.forEach(r => {
+                  const fileName = r.file.split('/').slice(-2).join('/');
+                  const fileLink = r.sha256 ? '[' + fileName + '](' + UC_BASE + '/' + r.sha256 + '/report/)' : fileName;
                   r.matches.forEach(m => {
                     const sev = m.meta?.severity || 'unknown';
                     const icon = sev === 'critical' || sev === 'high' ? '🔴' : sev === 'medium' ? '🟠' : '🟡';
-                    output += '| ' + r.file.split('/').slice(-2).join('/') + ' | ' + m.rule + ' | ' + icon + ' ' + sev + ' |\\n';
+                    output += '| ' + fileLink + ' | ' + m.rule + ' | ' + icon + ' ' + sev + ' |\\n';
                   });
                 });
                 console.log(output);

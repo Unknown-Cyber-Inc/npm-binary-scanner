@@ -277,6 +277,14 @@ Note: Reputation data is only fetched for executable files (binaries and scripts
 
 #### Add Results to PR Summary
 
+The scanner results include SHA256 hashes that can be used to link directly to UnknownCyber's detailed reports. Security findings in the summary include clickable links in the format:
+
+```
+[filename](https://unknowncyber.com/files/<sha256>/report/)
+```
+
+Example summary configuration:
+
 ```yaml
 - name: Scan binaries
   uses: Unknown-Cyber-Inc/npm-package-scanner@v1
@@ -444,6 +452,15 @@ When files already exist in UnknownCyber, the scanner automatically syncs tags:
 ## YARA Scanning
 
 The scanner includes optional YARA scanning to detect malware patterns and suspicious code in binaries and source files.
+
+### Automatic Upload of Matches
+
+When both `upload: 'true'` and `yara-scan: 'true'` are enabled, **all files that match YARA rules are automatically uploaded** to UnknownCyber, regardless of whether they were included in the initial scan. This ensures:
+
+- Complete visibility into security-flagged files
+- Detailed analysis available via UC's web interface
+- Files are tagged with `YARA_MATCH` for easy filtering
+- Report links in GitHub Actions summary point directly to file analysis
 
 ### Scan Binaries Only
 
