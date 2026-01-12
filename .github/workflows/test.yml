@@ -133,31 +133,44 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
       - name: Create maven test project
         run: |
-          mkdir -p test-project/lib/org/apache/commons/commons-lang3/3.12.0
+          mkdir -p test-project
+          cd test-project
           
-          # Create a fake JAR file (ZIP with proper magic bytes)
-          cd test-project/lib/org/apache/commons/commons-lang3/3.12.0
-          echo "PK" > commons-lang3-3.12.0.jar  # ZIP magic bytes (simplified)
-          printf '\x50\x4b\x03\x04' > commons-lang3-3.12.0.jar
-          
-          # Create pom.xml for metadata
+          # Create minimal pom.xml with a dependency that has native code
           cat > pom.xml << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
-          <project>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.12.0</version>
+          <project xmlns="http://maven.apache.org/POM/4.0.0">
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>com.test</groupId>
+            <artifactId>test-app</artifactId>
+            <version>1.0.0</version>
+            <dependencies>
+              <dependency>
+                <groupId>org.xerial</groupId>
+                <artifactId>sqlite-jdbc</artifactId>
+                <version>3.42.0.0</version>
+              </dependency>
+            </dependencies>
           </project>
           EOF
+          
+          # Download dependencies to lib/ folder
+          mvn dependency:copy-dependencies -DoutputDirectory=lib -q
 
-      - name: Run Scanner (explicit maven)
+      - name: Run Scanner (auto-detect maven)
         uses: ./
         id: scan
         with:
           scan-path: 'test-project'
-          ecosystems: 'maven'
           deep-scan: 'true'
 
       - name: Verify maven detection
@@ -167,13 +180,13 @@ jobs:
           echo "Total packages: ${{ steps.scan.outputs.total-packages }}"
           echo "Total binaries: ${{ steps.scan.outputs.total-binaries }}"
           
-          cat test-project/binary-scan-results.json
-          
-          # Verify we found the JAR
+          # sqlite-jdbc includes native .so/.dll files inside the JAR
           if [ "${{ steps.scan.outputs.total-binaries }}" -eq "0" ]; then
-            echo "::error::No JAR files found in maven lib"
+            echo "::error::No JAR files found"
             exit 1
           fi
+          
+          cat test-project/binary-scan-results.json
 
   test-cargo-ecosystem:
     name: Test Cargo/Rust Ecosystem
@@ -182,27 +195,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: test-project
+
       - name: Create cargo test project
         run: |
-          mkdir -p test-project/target/release
+          mkdir -p test-project
+          cd test-project
           
-          # Create Cargo.toml
-          cat > test-project/Cargo.toml << 'EOF'
+          # Create Cargo.toml with a minimal binary
+          cat > Cargo.toml << 'EOF'
           [package]
           name = "test-rust-app"
           version = "0.1.0"
           edition = "2021"
           EOF
           
-          # Create fake ELF binary
-          printf '\x7fELF' > test-project/target/release/test-rust-app
+          # Create minimal main.rs
+          mkdir -p src
+          echo 'fn main() { println!("Hello"); }' > src/main.rs
+          
+          # Build release binary
+          cargo build --release
 
-      - name: Run Scanner (explicit cargo)
+      - name: Run Scanner (auto-detect cargo)
         uses: ./
         id: scan
         with:
           scan-path: 'test-project'
-          ecosystems: 'cargo'
           deep-scan: 'true'
 
       - name: Verify cargo detection
@@ -211,6 +236,12 @@ jobs:
           echo "Ecosystems scanned: ${{ steps.scan.outputs.ecosystems-scanned }}"
           echo "Total packages: ${{ steps.scan.outputs.total-packages }}"
           echo "Total binaries: ${{ steps.scan.outputs.total-binaries }}"
+          
+          # Should find the compiled binary
+          if [ "${{ steps.scan.outputs.total-binaries }}" -eq "0" ]; then
+            echo "::error::No binaries found in cargo target/release"
+            exit 1
+          fi
           
           cat test-project/binary-scan-results.json
 
@@ -221,25 +252,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: false  # We'll manage our own project
+
       - name: Create go test project
         run: |
-          mkdir -p test-project/vendor/github.com/user/repo
+          mkdir -p test-project
+          cd test-project
           
           # Create go.mod
-          cat > test-project/vendor/github.com/user/repo/go.mod << 'EOF'
-          module github.com/user/repo
+          cat > go.mod << 'EOF'
+          module test-go-app
           go 1.21
+          require github.com/mattn/go-sqlite3 v1.14.17
           EOF
           
-          # Create fake .so file
-          printf '\x7fELF' > test-project/vendor/github.com/user/repo/helper.so
+          # Create minimal main.go that imports the C-binding package
+          cat > main.go << 'EOF'
+          package main
+          import _ "github.com/mattn/go-sqlite3"
+          func main() {}
+          EOF
+          
+          # Vendor dependencies (go-sqlite3 has CGO bindings)
+          go mod tidy
+          go mod vendor
 
-      - name: Run Scanner (explicit go)
+      - name: Run Scanner (auto-detect go)
         uses: ./
         id: scan
         with:
           scan-path: 'test-project'
-          ecosystems: 'go'
           deep-scan: 'true'
 
       - name: Verify go detection
@@ -249,6 +295,7 @@ jobs:
           echo "Total packages: ${{ steps.scan.outputs.total-packages }}"
           echo "Total binaries: ${{ steps.scan.outputs.total-binaries }}"
           
+          # go-sqlite3 vendors C source files
           cat test-project/binary-scan-results.json
 
   test-auto-detect-multiple:
