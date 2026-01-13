@@ -18,8 +18,8 @@ const { execSync } = require('child_process');
 // Parse command line arguments
 function parseArgs() {
   const args = process.argv.slice(2);
-  let targetDir = '../npm-scanner-demo';
-  let repoName = 'npm-scanner-demo';
+  let targetDir = '../uc-scanner-demo';
+  let repoName = 'uc-scanner-demo';
   let githubOrg = 'Unknown-Cyber-Inc';
   
   for (const arg of args) {
