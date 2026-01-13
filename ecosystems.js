@@ -57,13 +57,43 @@ function findPipPackageInfo(filePath, rootDir) {
   
   if (parts.length < 1) return null;
   
-  // Look for dist-info or egg-info directories at the package level
-  const entries = fs.readdirSync(rootDir);
+  // Find the site-packages or dist-packages directory that contains this file
+  // This is where dist-info directories are located
+  let pkgRoot = rootDir;
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === 'site-packages' || parts[i] === 'dist-packages' || parts[i] === 'Lib') {
+      // The package root is the site-packages directory
+      pkgRoot = path.join(rootDir, ...parts.slice(0, i + 1));
+      // Adjust parts to be relative to site-packages
+      parts.splice(0, i + 1);
+      break;
+    }
+  }
+  
+  // If we didn't find a site-packages, the rootDir might already be it
+  if (pkgRoot === rootDir && path.basename(rootDir).includes('site-packages')) {
+    // Already at site-packages level
+  }
+  
+  let entries;
+  try {
+    entries = fs.readdirSync(pkgRoot);
+  } catch (err) {
+    return null;
+  }
+  
+  // The first part after site-packages is the package directory (e.g., 'cryptography')
+  const packageDir = parts.length > 0 ? parts[0] : '';
   
   // First, try to find which package this file belongs to by checking dist-info
   for (const entry of entries) {
-    const entryPath = path.join(rootDir, entry);
-    const stat = fs.statSync(entryPath);
+    const entryPath = path.join(pkgRoot, entry);
+    let stat;
+    try {
+      stat = fs.statSync(entryPath);
+    } catch (err) {
+      continue;
+    }
     
     if (stat.isDirectory()) {
       // Check if this is a dist-info directory
@@ -75,9 +105,10 @@ function findPipPackageInfo(filePath, rootDir) {
         if (fs.existsSync(recordPath)) {
           try {
             const record = fs.readFileSync(recordPath, 'utf8');
-            const fileRelative = relativePath.replace(/\\/g, '/');
+            // For record matching, use the relative path from pkgRoot
+            const fileRelFromPkgRoot = parts.join('/');
             
-            if (record.includes(fileRelative) || record.includes(parts[0] + '/')) {
+            if (record.includes(fileRelFromPkgRoot) || (packageDir && record.includes(packageDir + '/'))) {
               // This dist-info owns this file, parse METADATA
               if (fs.existsSync(metadataPath)) {
                 const metadata = fs.readFileSync(metadataPath, 'utf8');
@@ -88,7 +119,7 @@ function findPipPackageInfo(filePath, rootDir) {
                   name: nameMatch ? nameMatch[1].trim() : entry.replace('.dist-info', ''),
                   version: versionMatch ? versionMatch[1].trim() : 'unknown',
                   path: entryPath,
-                  relativePath: parts[0]
+                  relativePath: packageDir || parts[0]
                 };
               }
             }
@@ -99,8 +130,8 @@ function findPipPackageInfo(filePath, rootDir) {
         
         // Fallback: match by directory name prefix
         const distInfoName = entry.replace('.dist-info', '').split('-')[0].toLowerCase();
-        if (parts[0].toLowerCase() === distInfoName || 
-            parts[0].toLowerCase().replace(/_/g, '-') === distInfoName) {
+        if (packageDir && (packageDir.toLowerCase() === distInfoName || 
+            packageDir.toLowerCase().replace(/_/g, '-') === distInfoName)) {
           if (fs.existsSync(metadataPath)) {
             try {
               const metadata = fs.readFileSync(metadataPath, 'utf8');
@@ -110,8 +141,8 @@ function findPipPackageInfo(filePath, rootDir) {
               return {
                 name: nameMatch ? nameMatch[1].trim() : distInfoName,
                 version: versionMatch ? versionMatch[1].trim() : 'unknown',
-                path: path.join(rootDir, parts[0]),
-                relativePath: parts[0]
+                path: path.join(pkgRoot, packageDir),
+                relativePath: packageDir
               };
             } catch (err) {
               // Continue
@@ -125,8 +156,8 @@ function findPipPackageInfo(filePath, rootDir) {
         const pkgInfoPath = path.join(entryPath, 'PKG-INFO');
         const eggName = entry.replace('.egg-info', '').split('-')[0].toLowerCase();
         
-        if (parts[0].toLowerCase() === eggName ||
-            parts[0].toLowerCase().replace(/_/g, '-') === eggName) {
+        if (packageDir && (packageDir.toLowerCase() === eggName ||
+            packageDir.toLowerCase().replace(/_/g, '-') === eggName)) {
           if (fs.existsSync(pkgInfoPath)) {
             try {
               const pkgInfo = fs.readFileSync(pkgInfoPath, 'utf8');
@@ -136,8 +167,8 @@ function findPipPackageInfo(filePath, rootDir) {
               return {
                 name: nameMatch ? nameMatch[1].trim() : eggName,
                 version: versionMatch ? versionMatch[1].trim() : 'unknown',
-                path: path.join(rootDir, parts[0]),
-                relativePath: parts[0]
+                path: path.join(pkgRoot, packageDir),
+                relativePath: packageDir
               };
             } catch (err) {
               // Continue
@@ -148,13 +179,13 @@ function findPipPackageInfo(filePath, rootDir) {
     }
   }
   
-  // Fallback: use the top-level directory name as package name
-  if (parts[0] && !parts[0].endsWith('.dist-info') && !parts[0].endsWith('.egg-info')) {
+  // Fallback: use the package directory name as package name
+  if (packageDir && !packageDir.endsWith('.dist-info') && !packageDir.endsWith('.egg-info')) {
     return {
-      name: parts[0],
+      name: packageDir,
       version: 'unknown',
-      path: path.join(rootDir, parts[0]),
-      relativePath: parts[0]
+      path: path.join(pkgRoot, packageDir),
+      relativePath: packageDir
     };
   }
   
