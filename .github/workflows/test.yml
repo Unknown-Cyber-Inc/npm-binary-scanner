@@ -565,12 +565,18 @@ jobs:
             echo "=== YARA Detections ==="
             node -e "
               const y = require('./test-project/yara-results.json');
-              y.matches.forEach(m => {
-                console.log('File:', m.file);
-                console.log('Rules:', m.rules.map(r => r.rule).join(', '));
-                console.log('Severity:', m.highestSeverity);
-                console.log('---');
-              });
+              const matches = y.results || y.matches || [];
+              if (matches.length === 0) {
+                console.log('No detailed matches in results');
+                console.log('Full output:', JSON.stringify(y, null, 2));
+              } else {
+                matches.forEach(m => {
+                  console.log('File:', m.file);
+                  console.log('Rules:', (m.rules || []).map(r => r.rule || r).join(', '));
+                  console.log('Severity:', m.highestSeverity || m.severity || 'unknown');
+                  console.log('---');
+                });
+              }
             "
           fi
           
