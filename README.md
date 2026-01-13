@@ -1,6 +1,6 @@
 # Package Binary Scanner
 
-[![Test Action](https://github.com/Unknown-Cyber-Inc/npm-package-scanner/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/npm-package-scanner/actions/workflows/test.yml)
+[![Test Action](https://github.com/Unknown-Cyber-Inc/uc-software-scan/actions/workflows/test.yml/badge.svg)](https://github.com/Unknown-Cyber-Inc/uc-software-scan/actions/workflows/test.yml)
 
 A GitHub Action and CLI tool that scans package directories for security threats. It **auto-detects** installed packages from multiple ecosystems (npm, pip, Maven, Cargo, Go, Ruby), finds binary executables and scripts, then uploads them to UnknownCyber for multi-layer threat analysis including AV scanning, genomic similarity, and SBOM tracking.
 
@@ -154,7 +154,7 @@ jobs:
       
       # Scanner auto-detects which ecosystems are installed
       - name: Scan binaries
-        uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+        uses: Unknown-Cyber-Inc/uc-software-scan@v1
         with:
           upload: 'true'
           api-key: ${{ secrets.UC_API_KEY }}
@@ -166,9 +166,9 @@ The scanner automatically detects installed package ecosystems—no configuratio
 
 ```bash
 # Clone and run directly
-git clone https://github.com/Unknown-Cyber-Inc/npm-package-scanner.git
+git clone https://github.com/Unknown-Cyber-Inc/uc-software-scan.git
 cd your-project
-node path/to/npm-package-scanner/scanner.js
+node path/to/uc-software-scan/scanner.js
 
 # With upload
 node scanner.js --upload --api-key YOUR_API_KEY
@@ -223,7 +223,7 @@ node scanner.js --upload --api-key YOUR_API_KEY
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   id: scan
 
 - name: Report
@@ -234,7 +234,7 @@ node scanner.js --upload --api-key YOUR_API_KEY
 
 ```yaml
 - name: Scan and upload binaries
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   id: scan
   with:
     upload: 'true'
@@ -257,7 +257,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Force upload all binaries
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     upload: 'true'
     skip-existing: 'false'  # Upload even if file exists
@@ -268,7 +268,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Quick scan and upload
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     upload: 'true'
     get-reputations: 'false'  # Don't fetch threat data for existing files
@@ -279,7 +279,7 @@ By default, the scanner will:
 
 ```yaml
 - name: Deep scan frontend
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     scan-path: './packages/frontend'
     deep-scan: 'true'
@@ -293,7 +293,7 @@ Upload package.json files to enable Software Bill of Materials (SBOM) creation:
 
 ```yaml
 - name: Scan with SBOM support
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     upload: 'true'
     include-package-json: 'true'
@@ -306,7 +306,7 @@ Upload everything in node_modules (executables, metadata, source files):
 
 ```yaml
 - name: Full package upload
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     upload: 'true'
     include-all-files: 'true'
@@ -321,7 +321,7 @@ The simplest way to get full security scanning with a detailed report:
 
 ```yaml
 - name: Scan npm packages
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     upload: 'true'
     deep-scan: 'true'
@@ -345,7 +345,7 @@ If you need a custom summary format, you can build it from outputs:
 
 ```yaml
 - name: Scan binaries
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   id: scan
   with:
     upload: 'true'
@@ -504,7 +504,7 @@ The scanner can check npm package licenses against a configurable policy to dete
 
 ```yaml
 - name: Scan with license check
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     license-check: 'true'
     fail-on-license: 'true'
@@ -538,7 +538,7 @@ Use it in your workflow:
 
 ```yaml
 - name: Scan with custom policy
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     license-check: 'true'
     license-policy: './license-policy.json'
@@ -570,7 +570,7 @@ When both `upload: 'true'` and `yara-scan: 'true'` are enabled, **all files that
 
 ```yaml
 - name: Scan binaries with YARA
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     yara-scan: 'true'
 ```
@@ -581,7 +581,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan JS files with YARA
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     yara-scan: 'true'
     yara-include: '*.js'
@@ -591,7 +591,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan JS, HTML, and MJS files
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     yara-scan: 'true'
     yara-include: '*.js,*.html,*.mjs'
@@ -601,7 +601,7 @@ Detect obfuscated malicious code in JS files (e.g., supply chain attacks):
 
 ```yaml
 - name: Scan with custom YARA rules
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     yara-scan: 'true'
     yara-rules: './my-rules'  # Path to your .yar files
@@ -653,7 +653,7 @@ Severity levels (`critical`, `high`, `medium`, `low`) are defined in rule metada
 
 ```yaml
 - name: Scan with YARA
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   id: scan
   with:
     yara-scan: 'true'
@@ -825,7 +825,7 @@ A reusable composite action is included for injecting **real malware samples** i
 ### Quick Start
 
 ```yaml
-- uses: Unknown-Cyber-Inc/npm-package-scanner/malware-test-inject@main
+- uses: Unknown-Cyber-Inc/uc-software-scan/malware-test-inject@main
   with:
     api-key: ${{ secrets.UC_API_KEY }}
     ecosystem: npm
@@ -860,13 +860,13 @@ Inject only when explicitly requested:
 
 ```yaml
 # Via workflow dispatch checkbox
-- uses: Unknown-Cyber-Inc/npm-package-scanner/malware-test-inject@main
+- uses: Unknown-Cyber-Inc/uc-software-scan/malware-test-inject@main
   if: ${{ inputs.inject-malware }}
   with:
     api-key: ${{ secrets.UC_API_KEY }}
 
 # Via commit message
-- uses: Unknown-Cyber-Inc/npm-package-scanner/malware-test-inject@main
+- uses: Unknown-Cyber-Inc/uc-software-scan/malware-test-inject@main
   if: contains(github.event.head_commit.message, 'infected')
   with:
     api-key: ${{ secrets.UC_API_KEY }}
@@ -892,7 +892,7 @@ jobs:
       - run: npm install
       
       # Inject malware (only when requested)
-      - uses: Unknown-Cyber-Inc/npm-package-scanner/malware-test-inject@main
+      - uses: Unknown-Cyber-Inc/uc-software-scan/malware-test-inject@main
         if: ${{ inputs.inject-malware }}
         with:
           api-key: ${{ secrets.UC_API_KEY }}
@@ -900,7 +900,7 @@ jobs:
           samples: obfuscated-js,elf-malware
       
       # Scan and fail if malware detected
-      - uses: Unknown-Cyber-Inc/npm-package-scanner@main
+      - uses: Unknown-Cyber-Inc/uc-software-scan@main
         with:
           api-key: ${{ secrets.UC_API_KEY }}
           fail-on-threats: 'true'

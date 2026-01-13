@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-YARA Scanner for npm-package-scanner
+YARA Scanner for uc-software-scan
 
 Scans binary files using YARA rules and outputs results in JSON format.
 Can use bundled rules and/or user-provided rules.
@@ -313,7 +313,7 @@ Examples:
     
     parser.add_argument(
         '--input', '-i',
-        help='Path to binary-scan-results.json from npm-package-scanner'
+        help='Path to binary-scan-results.json from uc-software-scan'
     )
     parser.add_argument(
         '--dir', '-d',

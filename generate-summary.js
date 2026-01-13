@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate GitHub Actions summary report for npm-package-scanner
+ * Generate GitHub Actions summary report for uc-software-scan
  * Outputs to GITHUB_STEP_SUMMARY with links to UnknownCyber reports
  */
 

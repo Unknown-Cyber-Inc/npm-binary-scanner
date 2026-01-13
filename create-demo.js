@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Create a demo repository showing npm-package-scanner evolution
+ * Create a demo repository showing uc-software-scan evolution
  * Simulates package evolution over 6 time periods with backdated commits
  * 
  * Usage:
@@ -123,7 +123,7 @@ function generatePackageJson(release, repoName) {
   return {
     name: repoName,
     version: release.tag.replace('v', ''),
-    description: 'Demo project for npm-package-scanner - shows package evolution over time',
+    description: 'Demo project for uc-software-scan - shows package evolution over time',
     main: 'index.js',
     scripts: {
       build: 'esbuild src/index.js --bundle --outfile=dist/bundle.js',
@@ -140,7 +140,7 @@ function generatePackageJson(release, repoName) {
 function generateReadme(release, repoName) {
   return `# ${repoName}
 
-This project demonstrates the npm-package-scanner GitHub Action.
+This project demonstrates the uc-software-scan GitHub Action.
 
 ## Current Release: ${release.tag}
 
@@ -157,7 +157,7 @@ ${Object.entries(release.packages).map(([pkg, ver]) => `| ${pkg} | ${ver} |`).jo
 This repository simulates a real-world project with evolving npm dependencies.
 Each release represents a point in time with different package versions.
 
-The [npm-package-scanner](https://github.com/Unknown-Cyber-Inc/npm-package-scanner) 
+The [uc-software-scan](https://github.com/Unknown-Cyber-Inc/uc-software-scan) 
 action scans for binaries and uploads them to UnknownCyber for security analysis.
 `;
 }
@@ -210,7 +210,7 @@ jobs:
       
       # Inject malware samples for testing (via workflow dispatch or commit message)
       - name: Inject malware test samples
-        uses: Unknown-Cyber-Inc/npm-package-scanner/malware-test-inject@main
+        uses: Unknown-Cyber-Inc/uc-software-scan/malware-test-inject@main
         if: \${{ inputs.inject-malware || contains(github.event.head_commit.message, 'infected') }}
         with:
           api-key: \${{ secrets.UC_API_KEY }}
@@ -220,7 +220,7 @@ jobs:
           samples: \${{ inputs.malware-samples || 'all' }}
       
       - name: Scan packages
-        uses: Unknown-Cyber-Inc/npm-package-scanner@main
+        uses: Unknown-Cyber-Inc/uc-software-scan@main
         id: scan
         with:
           upload: 'true'

@@ -1,10 +1,10 @@
 {
-  "name": "npm-package-scanner",
+  "name": "uc-software-scan",
   "version": "1.0.0",
   "description": "Scans npm packages for binary executables (DLL, EXE, ELF, SO, etc.)",
   "main": "scanner.js",
   "bin": {
-    "npm-package-scanner": "./scanner.js"
+    "uc-software-scan": "./scanner.js"
   },
   "scripts": {
     "scan": "node scanner.js"

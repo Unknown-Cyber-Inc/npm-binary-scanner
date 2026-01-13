@@ -1,6 +1,6 @@
 # License Compliance Guide
 
-This guide explains software license compliance, why it matters, and how to use the npm-package-scanner's license checking feature.
+This guide explains software license compliance, why it matters, and how to use the uc-software-scan's license checking feature.
 
 ## Table of Contents
 
@@ -212,7 +212,7 @@ The AGPL extends GPL to network/SaaS use. If you use AGPL code in a web service,
 
 ```yaml
 - name: Scan npm packages
-  uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+  uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     license-check: 'true'
     license-policy: 'permissive'  # or path to custom policy
@@ -360,7 +360,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm install
-      - uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+      - uses: Unknown-Cyber-Inc/uc-software-scan@v1
         with:
           license-check: 'true'
           fail-on-license: 'true'
@@ -371,7 +371,7 @@ jobs:
 Catch problems before they're merged:
 
 ```yaml
-- uses: Unknown-Cyber-Inc/npm-package-scanner@v1
+- uses: Unknown-Cyber-Inc/uc-software-scan@v1
   with:
     license-check: 'true'
     fail-on-license: 'true'
@@ -441,4 +441,4 @@ If you encounter license issues:
 1. Check this documentation
 2. Review the [tl;drLegal](https://tldrlegal.com/) summary for the license
 3. Consult your organization's legal team for complex cases
-4. Open an issue on the npm-package-scanner repository for tool-related problems
+4. Open an issue on the uc-software-scan repository for tool-related problems
