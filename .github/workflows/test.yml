@@ -949,120 +949,348 @@ jobs:
   # Test configuration misconfiguration detection (Phase 1 - Universal Detectors)
   # ==========================================================================
 
-  test-config-fixtures:
-    name: Verify Config Test Fixtures
+  test-config-scanner-secrets:
+    name: Test Config Scanner - Secrets
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify test fixture structure
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test secrets detection on bad configs
         run: |
-          echo "=== Verifying Config Scanner Test Fixtures ==="
+          echo "=== Testing Secrets Scanner on Bad Configs ==="
           
-          # Check directory structure exists
-          dirs=(
-            "test-configs/secrets/bad"
-            "test-configs/secrets/good"
-            "test-configs/network/bad"
-            "test-configs/network/good"
-            "test-configs/tls/bad"
-            "test-configs/tls/good"
-            "test-configs/debug/bad"
-            "test-configs/debug/good"
-            "test-configs/false-positives"
-          )
+          # Run scanner - should find issues and exit with code 1
+          set +e
+          result=$(node config-scanner.js test-configs/secrets/bad/ --scanners=secrets --json 2>&1)
+          exit_code=$?
+          set -e
           
-          for dir in "${dirs[@]}"; do
-            if [ ! -d "$dir" ]; then
-              echo "::error::Missing test fixture directory: $dir"
-              exit 1
-            fi
-            count=$(ls -1 "$dir" | wc -l)
-            echo "✓ $dir ($count files)"
-          done
+          echo "$result" | head -50
+          
+          if [ $exit_code -eq 0 ]; then
+            echo "::error::Secrets scanner should have found issues in bad configs"
+            exit 1
+          fi
+          
+          # Verify findings count
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          echo "Total findings: $findings"
+          
+          if [ "$findings" -lt 3 ]; then
+            echo "::error::Expected at least 3 secrets findings, got $findings"
+            exit 1
+          fi
+          
+          echo "✅ Secrets scanner correctly detected $findings issues in bad configs"
+
+      - name: Test secrets scanner on good configs
+        run: |
+          echo "=== Testing Secrets Scanner on Good Configs ==="
+          
+          # Run scanner - should NOT find issues (exit 0)
+          set +e
+          result=$(node config-scanner.js test-configs/secrets/good/ --scanners=secrets --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -30
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          
+          if [ "$findings" -gt 0 ]; then
+            echo "::error::Secrets scanner found $findings false positives in good configs"
+            echo "$result"
+            exit 1
+          fi
+          
+          echo "✅ Secrets scanner correctly passed good configs (0 findings)"
+
+  test-config-scanner-network:
+    name: Test Config Scanner - Network
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test network detection on bad configs
+        run: |
+          echo "=== Testing Network Scanner on Bad Configs ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/network/bad/ --scanners=network --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -50
+          
+          if [ $exit_code -eq 0 ]; then
+            echo "::error::Network scanner should have found issues in bad configs"
+            exit 1
+          fi
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          echo "Total findings: $findings"
+          
+          if [ "$findings" -lt 5 ]; then
+            echo "::error::Expected at least 5 network findings, got $findings"
+            exit 1
+          fi
+          
+          echo "✅ Network scanner correctly detected $findings issues in bad configs"
+
+      - name: Test network scanner on good configs
+        run: |
+          echo "=== Testing Network Scanner on Good Configs ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/network/good/ --scanners=network --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -30
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          
+          if [ "$findings" -gt 0 ]; then
+            echo "::error::Network scanner found $findings false positives in good configs"
+            echo "$result"
+            exit 1
+          fi
+          
+          echo "✅ Network scanner correctly passed good configs (0 findings)"
+
+  test-config-scanner-tls:
+    name: Test Config Scanner - TLS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test TLS detection on bad configs
+        run: |
+          echo "=== Testing TLS Scanner on Bad Configs ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/tls/bad/ --scanners=tls --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -50
+          
+          if [ $exit_code -eq 0 ]; then
+            echo "::error::TLS scanner should have found issues in bad configs"
+            exit 1
+          fi
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          echo "Total findings: $findings"
+          
+          if [ "$findings" -lt 3 ]; then
+            echo "::error::Expected at least 3 TLS findings, got $findings"
+            exit 1
+          fi
+          
+          echo "✅ TLS scanner correctly detected $findings issues in bad configs"
+
+      - name: Test TLS scanner on good configs
+        run: |
+          echo "=== Testing TLS Scanner on Good Configs ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/tls/good/ --scanners=tls --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -30
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          
+          if [ "$findings" -gt 0 ]; then
+            echo "::error::TLS scanner found $findings false positives in good configs"
+            echo "$result"
+            exit 1
+          fi
+          
+          echo "✅ TLS scanner correctly passed good configs (0 findings)"
+
+  test-config-scanner-debug:
+    name: Test Config Scanner - Debug
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test debug detection on bad configs
+        run: |
+          echo "=== Testing Debug Scanner on Bad Configs ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/debug/bad/ --scanners=debug --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -50
+          
+          if [ $exit_code -eq 0 ]; then
+            echo "::error::Debug scanner should have found issues in bad configs"
+            exit 1
+          fi
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          echo "Total findings: $findings"
+          
+          if [ "$findings" -lt 5 ]; then
+            echo "::error::Expected at least 5 debug findings, got $findings"
+            exit 1
+          fi
+          
+          echo "✅ Debug scanner correctly detected $findings issues in bad configs"
+
+      - name: Test debug scanner on good configs
+        run: |
+          echo "=== Testing Debug Scanner on Good Configs ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/debug/good/ --scanners=debug --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -30
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          
+          if [ "$findings" -gt 0 ]; then
+            echo "::error::Debug scanner found $findings false positives in good configs"
+            echo "$result"
+            exit 1
+          fi
+          
+          echo "✅ Debug scanner correctly passed good configs (0 findings)"
+
+  test-config-scanner-false-positives:
+    name: Test Config Scanner - False Positives
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test false positive handling
+        run: |
+          echo "=== Testing False Positive Handling ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/false-positives/ --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          echo "$result" | head -50
+          
+          findings=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          
+          # Allow some low-severity findings but not high/critical
+          high_findings=$(echo "$result" | node -e "
+            const d=require('fs').readFileSync(0,'utf8');
+            const j=JSON.parse(d);
+            const high = j.results.reduce((sum, r) => 
+              sum + r.findings.filter(f => f.severity === 'critical' || f.severity === 'high').length, 0);
+            console.log(high);
+          ")
+          
+          echo "Total findings: $findings"
+          echo "High/Critical findings: $high_findings"
+          
+          if [ "$high_findings" -gt 0 ]; then
+            echo "::error::Scanner found $high_findings high/critical false positives in test files"
+            echo "$result"
+            exit 1
+          fi
+          
+          echo "✅ False positive handling passed ($findings low-severity findings acceptable)"
+
+  test-config-scanner-integration:
+    name: Test Config Scanner - Full Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run full scanner on all bad configs
+        run: |
+          echo "=== Full Integration Test ==="
+          
+          set +e
+          result=$(node config-scanner.js test-configs/ --json 2>&1)
+          exit_code=$?
+          set -e
+          
+          # Parse results
+          total=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFindings)")
+          files=$(echo "$result" | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log(j.totalFiles)")
+          
+          echo "Files scanned: $files"
+          echo "Total findings: $total"
+          
+          # We expect findings from bad configs
+          if [ "$total" -lt 15 ]; then
+            echo "::error::Expected at least 15 total findings across all bad configs, got $total"
+            exit 1
+          fi
+          
+          echo "✅ Integration test passed: $total findings across $files files"
+
+      - name: Verify CLI output formats
+        run: |
+          echo "=== Testing CLI Output Formats ==="
+          
+          # Test human-readable output
+          echo "Human-readable output:"
+          node config-scanner.js test-configs/secrets/bad/env-file.env | head -20
+          
+          # Test JSON output
+          echo ""
+          echo "JSON output:"
+          node config-scanner.js test-configs/secrets/bad/env-file.env --json | head -20
+          
+          # Test scanner filtering
+          echo ""
+          echo "Scanner filtering (secrets only):"
+          node config-scanner.js test-configs/secrets/bad/ --scanners=secrets --json | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log('Findings:', j.totalFindings)"
+          
+          # Test severity filtering
+          echo ""
+          echo "Severity filtering (critical only):"
+          node config-scanner.js test-configs/secrets/bad/ --severity=critical --json | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);console.log('Critical findings:', j.totalFindings)"
           
           echo ""
-          echo "=== Test Fixture Summary ==="
-          echo "Secrets bad configs: $(ls -1 test-configs/secrets/bad | wc -l)"
-          echo "Secrets good configs: $(ls -1 test-configs/secrets/good | wc -l)"
-          echo "Network bad configs: $(ls -1 test-configs/network/bad | wc -l)"
-          echo "Network good configs: $(ls -1 test-configs/network/good | wc -l)"
-          echo "TLS bad configs: $(ls -1 test-configs/tls/bad | wc -l)"
-          echo "TLS good configs: $(ls -1 test-configs/tls/good | wc -l)"
-          echo "Debug bad configs: $(ls -1 test-configs/debug/bad | wc -l)"
-          echo "Debug good configs: $(ls -1 test-configs/debug/good | wc -l)"
-          echo "False positive tests: $(ls -1 test-configs/false-positives | wc -l)"
-
-      - name: Verify bad configs contain expected patterns
-        run: |
-          echo "=== Verifying Bad Configs Contain Detectable Patterns ==="
-          
-          # Secrets - should contain password/api_key patterns
-          if ! grep -rq "password" test-configs/secrets/bad/; then
-            echo "::error::Secrets bad configs should contain password patterns"
-            exit 1
-          fi
-          echo "✓ Secrets bad configs contain password patterns"
-          
-          # Network - should contain 0.0.0.0 patterns
-          if ! grep -rq "0\.0\.0\.0" test-configs/network/bad/; then
-            echo "::error::Network bad configs should contain 0.0.0.0 patterns"
-            exit 1
-          fi
-          echo "✓ Network bad configs contain 0.0.0.0 patterns"
-          
-          # TLS - should contain TLSv1 patterns
-          if ! grep -rq "TLSv1" test-configs/tls/bad/; then
-            echo "::error::TLS bad configs should contain TLSv1 patterns"
-            exit 1
-          fi
-          echo "✓ TLS bad configs contain TLSv1 patterns"
-          
-          # Debug - should contain debug=true patterns
-          if ! grep -riq "debug" test-configs/debug/bad/; then
-            echo "::error::Debug bad configs should contain debug patterns"
-            exit 1
-          fi
-          echo "✓ Debug bad configs contain debug patterns"
-
-      - name: Verify good configs use safe patterns
-        run: |
-          echo "=== Verifying Good Configs Use Safe Patterns ==="
-          
-          # Secrets good - should use env vars, not hardcoded
-          if grep -rq 'password.*=.*"[A-Za-z0-9]' test-configs/secrets/good/ 2>/dev/null; then
-            # Check it's not an env var reference
-            if ! grep -rq '\$' test-configs/secrets/good/; then
-              echo "::warning::Secrets good configs may contain hardcoded values"
-            fi
-          fi
-          echo "✓ Secrets good configs reviewed"
-          
-          # Network good - should NOT contain 0.0.0.0
-          if grep -rq "0\.0\.0\.0" test-configs/network/good/; then
-            echo "::error::Network good configs should not contain 0.0.0.0"
-            exit 1
-          fi
-          echo "✓ Network good configs do not expose 0.0.0.0"
-          
-          # TLS good - should only have TLSv1.2 or TLSv1.3
-          if grep -rq "TLSv1[^.]" test-configs/tls/good/; then
-            echo "::error::TLS good configs should not contain TLSv1.0 or TLSv1.1"
-            exit 1
-          fi
-          echo "✓ TLS good configs use modern TLS only"
-
-      - name: Test fixture documentation exists
-        run: |
-          if [ ! -f "test-configs/README.md" ]; then
-            echo "::error::Missing test-configs/README.md"
-            exit 1
-          fi
-          echo "✓ Test fixture documentation exists"
-          
-          if [ ! -f "docs/SOFTWARE-MISCONFIGURATIONS.md" ]; then
-            echo "::error::Missing docs/SOFTWARE-MISCONFIGURATIONS.md"
-            exit 1
-          fi
-          echo "✓ Config scanner documentation exists"
+          echo "✅ CLI output formats working correctly"
